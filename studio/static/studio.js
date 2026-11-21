@@ -555,9 +555,20 @@
         scan.addColorStop(1, 'rgba(43,156,148,.16)');
         ctx.fillStyle = scan;
         ctx.fillRect(scanX - 28, plot.top, 32, plot.bottom - plot.top);
-        ctx.strokeStyle = 'rgba(43,156,148,.42)';
-        ctx.lineWidth = 1;
+        ctx.strokeStyle = 'rgba(43,156,148,.48)';
+        ctx.lineWidth = 1.2;
         ctx.beginPath(); ctx.moveTo(scanX, plot.top); ctx.lineTo(scanX, plot.bottom); ctx.stroke();
+        const fIdx = clamp(Math.round((state.ambientTime / Math.max(duration, 1e-6)) * (energyDb.length - 1)), 0, energyDb.length - 1);
+        [
+          { val: energyDb[fIdx], col: palette.blue },
+          { val: highBandDb[fIdx], col: palette.amber },
+        ].forEach(pt => {
+          if (!Number.isFinite(pt.val)) return;
+          const py = y(pt.val);
+          ctx.fillStyle = '#fff';
+          ctx.beginPath(); ctx.arc(scanX, py, 4.2, 0, Math.PI * 2); ctx.fill();
+          ctx.strokeStyle = pt.col; ctx.lineWidth = 2; ctx.stroke();
+        });
       }
     }
 
@@ -587,10 +598,17 @@
       ctx.lineTo(x(normalized.at(-1).frame), plot.bottom); ctx.lineTo(x(normalized[0].frame), plot.bottom); ctx.closePath();
       const gradient = ctx.createLinearGradient(0, plot.top, 0, plot.bottom);
       gradient.addColorStop(0, 'rgba(123,107,176,.06)'); gradient.addColorStop(1, 'rgba(123,107,176,.26)');
-      ctx.fillStyle = gradient; ctx.fill(); ctx.strokeStyle = palette.violet; ctx.lineWidth = 1.8; ctx.stroke();
+      ctx.fillStyle = gradient; ctx.fill(); ctx.strokeStyle = palette.violet; ctx.lineWidth = 1.9; ctx.stroke();
+      const pulse = 0.5 + 0.5 * Math.sin(state.ambientClock / 420);
       decoded.boundaries.slice(1, -1).forEach(frame => {
         const px = x(frame);
-        ctx.strokeStyle = palette.coral; ctx.lineWidth = 1.6;
+        const halo = ctx.createLinearGradient(px - 10, 0, px + 10, 0);
+        halo.addColorStop(0, 'rgba(230,106,78,0)');
+        halo.addColorStop(0.5, `rgba(230,106,78,${0.12 + pulse * 0.12})`);
+        halo.addColorStop(1, 'rgba(230,106,78,0)');
+        ctx.fillStyle = halo;
+        ctx.fillRect(px - 10, plot.top, 20, plot.bottom - plot.top);
+        ctx.strokeStyle = palette.coral; ctx.lineWidth = 1.8;
         ctx.beginPath(); ctx.moveTo(px, plot.top); ctx.lineTo(px, plot.bottom); ctx.stroke();
         ctx.fillStyle = palette.coral; ctx.beginPath(); ctx.moveTo(px, plot.top); ctx.lineTo(px - 5, plot.top + 8); ctx.lineTo(px + 5, plot.top + 8); ctx.closePath(); ctx.fill();
       });
@@ -600,9 +618,15 @@
         const scanX = plot.x(state.ambientTime);
         ctx.fillStyle = 'rgba(123,107,176,.10)';
         ctx.fillRect(scanX - 18, plot.top, 18, plot.bottom - plot.top);
-        ctx.strokeStyle = 'rgba(123,107,176,.48)';
-        ctx.lineWidth = 1;
+        ctx.strokeStyle = 'rgba(123,107,176,.52)';
+        ctx.lineWidth = 1.1;
         ctx.beginPath(); ctx.moveTo(scanX, plot.top); ctx.lineTo(scanX, plot.bottom); ctx.stroke();
+        const match = normalized.reduce((best, item) => Math.abs(x(item.frame) - scanX) < Math.abs(x(best.frame) - scanX) ? item : best, normalized[0]);
+        if (match && Math.abs(x(match.frame) - scanX) < 16) {
+          ctx.fillStyle = '#fff';
+          ctx.beginPath(); ctx.arc(scanX, y(match.value), 4, 0, Math.PI * 2); ctx.fill();
+          ctx.strokeStyle = palette.violet; ctx.lineWidth = 2; ctx.stroke();
+        }
       }
     }
 
@@ -903,7 +927,7 @@
       const selectedText = model.selected.length ? model.selected.map(item => item.candidate.phrase).join('、') : '无';
       const missedText = missed.length ? `漏掉：${missed.join('、')}` : '没有漏掉目标词';
       const rescue = model.utterance.id === 'continue_rescue' && model.selectedNames.has('烧水');
-      $('#decoder-callout').innerHTML = `当前集合：<strong>${selectedText}</strong>。${missedText}。${rescue ? ' v3 使用 <code>continue</code> 跳过被 z-space margin 拒绝的干扰项，因此保住了后面的真目标。' : ''}`;
+      $('#decoder-callout').innerHTML = `当前集合：<strong>${selectedText}</strong>。${missedText}。${rescue ? ' 解码器在概率排序循环中使用 <code>continue</code> 跳过不满足 z 间隔的干扰项，保住了排在后面的真目标。' : ''}`;
       renderSurface(); renderReliability(); updateSliderLabels();
     }
 
@@ -932,18 +956,28 @@
       ctx.fillStyle = palette.blue;
       ctx.beginPath(); ctx.arc(x(travel), y(travel), 3, 0, Math.PI * 2); ctx.fill();
       const barWidth = (plot.right - plot.left) / reliability.bins.length * 0.62;
+      const curvePts = [];
       reliability.bins.forEach(bin => {
         if (!bin.count) return;
         const bx = x(bin.center) - barWidth / 2;
-        const livingOffset = Math.sin(now / 560 + bin.center * 7) * 0.007;
+        const livingOffset = Math.sin(now / 560 + bin.center * 7) * 0.006;
         const confValue = clamp(bin.avg_conf + livingOffset, 0, 1);
         const accValue = clamp(bin.avg_acc + livingOffset, 0, 1);
+        curvePts.push({ cx: x(bin.center), cy: y(accValue) });
         const top = y(Math.max(confValue, accValue));
-        ctx.fillStyle = 'rgba(0,113,227,.13)';
+        ctx.fillStyle = state.priorFix ? 'rgba(43,156,148,.14)' : 'rgba(230,106,78,.16)';
         ctx.fillRect(bx, top, barWidth, Math.abs(y(confValue) - y(accValue)));
-        ctx.fillStyle = palette.blue; ctx.fillRect(bx, y(confValue) - 2, barWidth, 4);
-        ctx.fillStyle = palette.teal; ctx.beginPath(); ctx.arc(x(bin.center), y(accValue), 3.5, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = palette.blue; ctx.fillRect(bx, y(confValue) - 2, barWidth, 3.5);
+        ctx.fillStyle = state.priorFix ? palette.teal : palette.coral;
+        ctx.beginPath(); ctx.arc(x(bin.center), y(accValue), 4, 0, Math.PI * 2); ctx.fill();
       });
+      if (curvePts.length > 1) {
+        ctx.strokeStyle = state.priorFix ? 'rgba(43,156,148,.75)' : 'rgba(230,106,78,.80)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        curvePts.forEach((pt, idx) => idx === 0 ? ctx.moveTo(pt.cx, pt.cy) : ctx.lineTo(pt.cx, pt.cy));
+        ctx.stroke();
+      }
       ctx.fillStyle = palette.muted; ctx.font = '10px Roboto Mono, monospace'; ctx.textAlign = 'left'; ctx.fillText('置信度', plot.left, height - 8);
       ctx.textAlign = 'right'; ctx.fillText('准确率', plot.right, height - 8);
       if (updateStats) statCards($('#calib-stats'), [
@@ -970,18 +1004,42 @@
       drawPlotFrame(ctx, width, height, plot.left, 18, plot.top, 26);
       const x = value => plot.left + clamp(value, 0, 0.6) / 0.6 * (plot.right - plot.left);
       const y = value => plot.bottom - clamp(value, 0, 1) * (plot.bottom - plot.top);
-      data.operating_surface.forEach(point => {
-        ctx.fillStyle = `rgba(230,106,78,${0.16 + point.far * 0.5})`;
-        ctx.beginPath(); ctx.arc(x(point.far), y(point.f1), 2.4, 0, Math.PI * 2); ctx.fill();
+      const surfacePts = data.operating_surface;
+      // Draw upper Pareto envelope
+      const sortedByFar = [...surfacePts].sort((a, b) => a.far - b.far);
+      const frontier = [];
+      let bestF1 = -1;
+      sortedByFar.forEach(pt => {
+        if (pt.f1 > bestF1) { bestF1 = pt.f1; frontier.push(pt); }
+      });
+      if (frontier.length > 1) {
+        ctx.strokeStyle = 'rgba(43,156,148,.42)';
+        ctx.lineWidth = 1.6;
+        ctx.beginPath();
+        frontier.forEach((pt, idx) => idx === 0 ? ctx.moveTo(x(pt.far), y(pt.f1)) : ctx.lineTo(x(pt.far), y(pt.f1)));
+        ctx.stroke();
+      }
+      surfacePts.forEach(point => {
+        ctx.fillStyle = `rgba(230,106,78,${0.18 + point.far * 0.5})`;
+        ctx.beginPath(); ctx.arc(x(point.far), y(point.f1), 2.6, 0, Math.PI * 2); ctx.fill();
       });
       const point = operatingPoint();
-      ctx.strokeStyle = palette.blue; ctx.lineWidth = 1.5;
-      ctx.beginPath(); ctx.arc(x(point.far), y(point.f1), 6, 0, Math.PI * 2); ctx.stroke();
-      ctx.fillStyle = palette.blue; ctx.beginPath(); ctx.arc(x(point.far), y(point.f1), 3.2, 0, Math.PI * 2); ctx.fill();
-      const ring = 8 + 5 * (0.5 + 0.5 * Math.sin(now / 520));
-      ctx.strokeStyle = 'rgba(0,113,227,.16)';
-      ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.arc(x(point.far), y(point.f1), ring, 0, Math.PI * 2); ctx.stroke();
+      const px = x(point.far), py = y(point.f1);
+      ctx.strokeStyle = palette.blue; ctx.lineWidth = 1.6;
+      ctx.beginPath(); ctx.arc(px, py, 6.2, 0, Math.PI * 2); ctx.stroke();
+      ctx.fillStyle = palette.blue; ctx.beginPath(); ctx.arc(px, py, 3.3, 0, Math.PI * 2); ctx.fill();
+      const ring = 8 + 6 * (0.5 + 0.5 * Math.sin(now / 520));
+      ctx.strokeStyle = 'rgba(0,113,227,.22)';
+      ctx.lineWidth = 1.1;
+      ctx.beginPath(); ctx.arc(px, py, ring, 0, Math.PI * 2); ctx.stroke();
+      // Floating F1 / FAR badge
+      const tag = `F1 ${point.f1.toFixed(2)} · FAR ${(point.far * 100).toFixed(0)}%`;
+      const tagX = clamp(px + 10, plot.left + 4, plot.right - 112);
+      const tagY = clamp(py - 22, plot.top + 2, plot.bottom - 20);
+      ctx.fillStyle = 'rgba(255,255,255,.92)'; roundedRect(ctx, tagX, tagY, 108, 17, 5); ctx.fill();
+      ctx.strokeStyle = 'rgba(0,113,227,.25)'; ctx.lineWidth = 1; ctx.stroke();
+      ctx.fillStyle = palette.blue; ctx.font = '600 9.5px Roboto Mono, monospace'; ctx.textAlign = 'left';
+      ctx.fillText(tag, tagX + 6, tagY + 12);
       ctx.fillStyle = palette.muted; ctx.font = '10px Roboto Mono, monospace'; ctx.textAlign = 'left'; ctx.fillText('FAR →', plot.left, height - 7);
       ctx.save(); ctx.translate(12, (plot.top + plot.bottom) / 2); ctx.rotate(-Math.PI / 2); ctx.textAlign = 'center'; ctx.fillText('F1 ↑', 0, 0); ctx.restore();
     }
@@ -1103,7 +1161,7 @@
           <p class="metric-note">跳过错位与不可定位预测，指标看起来更漂亮。</p>
         </div>
         <div class="compare-card compare-card--honest">
-          <h4><span>v3 诚实指标</span><span class="mono">${metrics.f1.toFixed(2)}</span></h4>
+          <h4><span>诚实指标</span><span class="mono">${metrics.f1.toFixed(2)}</span></h4>
           <div class="metric-line"><span>IoU ≥ ${data.timeline.iou_threshold} 命中</span><strong>${metrics.matched}</strong></div>
           <div class="metric-line"><span>precision / recall</span><strong>${metrics.precision.toFixed(2)} / ${metrics.recall.toFixed(2)}</strong></div>
           <div class="metric-line"><span>no-position 进入分母</span><strong>是</strong></div>
@@ -1163,15 +1221,26 @@
         const stroke = span.char_source === 'reading' ? palette.blue : span.char_source === 'text-fallback' ? palette.amber : palette.coral;
         drawSpan(ctx, x(span.start), rowY, x(span.end) - x(span.start), 32, fill, stroke, span.phrase, span.char_source);
       });
-      metrics.phraseMatches.forEach(pair => {
+      metrics.phraseMatches.forEach((pair, pIdx) => {
         const fromX = (x(pair.exp.start) + x(pair.exp.end)) / 2, toX = (x(pair.pred.start) + x(pair.pred.end)) / 2;
         const topY = 62, bottomY = 153, controlY = (topY + bottomY) / 2;
+        const ok = pair.iou >= data.timeline.iou_threshold;
         ctx.beginPath(); ctx.moveTo(fromX, topY); ctx.bezierCurveTo(fromX, controlY, toX, controlY, toX, bottomY);
-        ctx.strokeStyle = pair.iou >= data.timeline.iou_threshold ? 'rgba(43,156,148,.62)' : 'rgba(230,106,78,.65)';
-        ctx.lineWidth = pair.iou >= data.timeline.iou_threshold ? 1.8 : 1.4; ctx.setLineDash(pair.iou >= data.timeline.iou_threshold ? [] : [4, 4]); ctx.stroke(); ctx.setLineDash([]);
+        ctx.strokeStyle = ok ? 'rgba(43,156,148,.68)' : 'rgba(230,106,78,.72)';
+        ctx.lineWidth = ok ? 2.0 : 1.5; ctx.setLineDash(ok ? [] : [4, 4]); ctx.stroke(); ctx.setLineDash([]);
+        // Animated traveling signal droplet along the cubic Bezier arc
+        const t = ((performance.now() / 1600) + pIdx * 0.23) % 1;
+        const mt = 1 - t;
+        const bx = mt * mt * mt * fromX + 3 * mt * mt * t * fromX + 3 * mt * t * t * toX + t * t * t * toX;
+        const by = mt * mt * mt * topY + 3 * mt * mt * t * controlY + 3 * mt * t * t * controlY + t * t * t * bottomY;
+        ctx.fillStyle = ok ? 'rgba(43,156,148,.24)' : 'rgba(230,106,78,.24)';
+        ctx.beginPath(); ctx.arc(bx, by, 6, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = ok ? palette.teal : palette.coral;
+        ctx.beginPath(); ctx.arc(bx, by, 2.8, 0, Math.PI * 2); ctx.fill();
         const labelX = (fromX + toX) / 2, labelY = controlY - 2;
-        ctx.fillStyle = '#fff'; roundedRect(ctx, labelX - 22, labelY - 7, 44, 14, 5); ctx.fill(); ctx.strokeStyle = 'rgba(29,29,31,.08)'; ctx.stroke();
-        ctx.fillStyle = pair.iou >= data.timeline.iou_threshold ? palette.teal : palette.coral; ctx.font = '9px Roboto Mono, monospace'; ctx.textAlign = 'center'; ctx.fillText(`IoU ${pair.iou.toFixed(2)}`, labelX, labelY + 3);
+        ctx.fillStyle = '#fff'; roundedRect(ctx, labelX - 24, labelY - 8, 48, 16, 6); ctx.fill();
+        ctx.strokeStyle = ok ? 'rgba(43,156,148,.28)' : 'rgba(230,106,78,.32)'; ctx.lineWidth = 1; ctx.stroke();
+        ctx.fillStyle = ok ? palette.teal : palette.coral; ctx.font = '600 9.5px Roboto Mono, monospace'; ctx.textAlign = 'center'; ctx.fillText(`IoU ${pair.iou.toFixed(2)}`, labelX, labelY + 3);
       });
       ctx.fillStyle = palette.muted; ctx.font = '10px Roboto Mono, monospace'; ctx.textAlign = 'right';
       ctx.fillText(`honest F1 ${metrics.f1.toFixed(2)} · naive F1 ${metrics.naiveF1.toFixed(2)}`, right, 10);
@@ -1246,19 +1315,32 @@
       const x = value => plot.left + (Math.log10(Math.max(value, 1)) - minCount) / Math.max(maxCount - minCount, 1e-9) * (plot.right - plot.left);
       const y = value => plot.bottom - value * (plot.bottom - plot.top);
       const classColors = { head: palette.blue, body: palette.teal, tail: palette.coral };
-      const fillColors = { head: 'rgba(0,113,227,.12)', body: 'rgba(43,156,148,.12)', tail: 'rgba(230,106,78,.12)' };
-      preset.points.forEach((point, index) => {
-        const cx = x(point.count);
-        const cy = y(clamp(point.recall + Math.sin(now / 620 + index * 0.8) * 0.012, 0, 1));
-        ctx.fillStyle = fillColors[point.freq_class] || 'rgba(123,107,176,.12)'; ctx.beginPath(); ctx.arc(cx, cy, 7, 0, Math.PI * 2); ctx.fill();
-        ctx.strokeStyle = classColors[point.freq_class] || palette.violet; ctx.lineWidth = 1.5; ctx.stroke();
-        ctx.fillStyle = palette.muted; ctx.font = '9px Noto Sans SC, sans-serif'; ctx.textAlign = 'center'; ctx.fillText(point.word, cx, cy - 11);
-      });
+      const fillColors = { head: 'rgba(0,113,227,.16)', body: 'rgba(43,156,148,.16)', tail: 'rgba(230,106,78,.16)' };
+      const haloColors = { head: 'rgba(0,113,227,.06)', body: 'rgba(43,156,148,.06)', tail: 'rgba(230,106,78,.07)' };
       const xs = counts, ys = preset.points.map(point => point.recall), xMean = mean(xs), yMean = mean(ys);
       const slope = xs.reduce((sum, value, index) => sum + (value - xMean) * (ys[index] - yMean), 0) / Math.max(xs.reduce((sum, value) => sum + (value - xMean) ** 2, 0), 1e-9);
       const intercept = yMean - slope * xMean;
-      ctx.strokeStyle = palette.violet; ctx.lineWidth = 1.5; ctx.setLineDash([5, 4]);
-      ctx.beginPath(); ctx.moveTo(plot.left, y(clamp(slope * minCount + intercept, 0, 1))); ctx.lineTo(plot.right, y(clamp(slope * maxCount + intercept, 0, 1))); ctx.stroke(); ctx.setLineDash([]);
+      // Soft confidence band around regression line
+      const yL = y(clamp(slope * minCount + intercept, 0, 1));
+      const yR = y(clamp(slope * maxCount + intercept, 0, 1));
+      ctx.fillStyle = 'rgba(123,107,176,.07)';
+      ctx.beginPath();
+      ctx.moveTo(plot.left, clamp(yL - 16, plot.top, plot.bottom));
+      ctx.lineTo(plot.right, clamp(yR - 16, plot.top, plot.bottom));
+      ctx.lineTo(plot.right, clamp(yR + 16, plot.top, plot.bottom));
+      ctx.lineTo(plot.left, clamp(yL + 16, plot.top, plot.bottom));
+      ctx.closePath(); ctx.fill();
+      preset.points.forEach((point, index) => {
+        const cx = x(point.count);
+        const cy = y(clamp(point.recall + Math.sin(now / 620 + index * 0.8) * 0.010, 0, 1));
+        ctx.fillStyle = haloColors[point.freq_class] || 'rgba(123,107,176,.06)';
+        ctx.beginPath(); ctx.arc(cx, cy, 15, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = fillColors[point.freq_class] || 'rgba(123,107,176,.14)'; ctx.beginPath(); ctx.arc(cx, cy, 7.2, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = classColors[point.freq_class] || palette.violet; ctx.lineWidth = 1.6; ctx.stroke();
+        ctx.fillStyle = palette.ink; ctx.font = '500 9.5px Noto Sans SC, sans-serif'; ctx.textAlign = 'center'; ctx.fillText(point.word, cx, cy - 11);
+      });
+      ctx.strokeStyle = palette.violet; ctx.lineWidth = 1.8; ctx.setLineDash([5, 4]);
+      ctx.beginPath(); ctx.moveTo(plot.left, yL); ctx.lineTo(plot.right, yR); ctx.stroke(); ctx.setLineDash([]);
       ctx.fillStyle = palette.muted; ctx.font = '10px Roboto Mono, monospace'; ctx.textAlign = 'left'; ctx.fillText('词频（log）→', plot.left, height - 9);
       const travel = (now / 3200) % 1;
       const trackX = plot.left + travel * (plot.right - plot.left);
@@ -1427,8 +1509,8 @@
       const center = width * 0.54;
       const right = width - Math.max(26, width * 0.04);
       const statusWidth = Math.min(180, width * 0.25);
-      const top = 56;
-      const rowGap = 66;
+      const top = 46;
+      const rowGap = 52;
       ctx.font = '10px Roboto Mono, monospace';
       ctx.textAlign = 'left'; ctx.fillStyle = palette.muted;
       ctx.fillText('合成记录', left, 24);

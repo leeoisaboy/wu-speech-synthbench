@@ -38,7 +38,7 @@
       <div class="topbar__meta">
         <span class="live-pill">
           <span class="status-dot" aria-hidden="true"></span>
-          <span>v3 · 自动演示中</span>
+          <span>纯 NumPy · 自动演示</span>
         </span>
         <a class="compact-button" href="https://github.com/leeoisaboy/wu-speech-synthbench" target="_blank" rel="noopener">GitHub ↗</a>
       </div>
@@ -48,10 +48,10 @@
   <main class="story">
     <section class="hero hero--story" data-reveal="hero" aria-labelledby="hero-title">
       <div class="hero__center">
-        <p class="eyebrow">WU-SPEECH-SYNTHBENCH V3 · QA &amp; CALIBRATION STUDIO</p>
+        <p class="eyebrow">WU-SPEECH-SYNTHBENCH · QA &amp; CALIBRATION STUDIO</p>
         <h1 id="hero-title">评测不注水，<br /><span>分数才可信。</span></h1>
         <p class="hero__lede">
-          低资源方言语音评测里最难察觉的五个坑——静音稀释能量谷、高频清擦音漏切、先验概率失校准、多区间匹配刷分、硬负样本词表泄漏——全部做成全仓纯 NumPy、零后端、可在浏览器里亲手拖动的白盒标定台。
+          面向低资源方言语音的语料规划、信号级自动切字、概率校准与多区间评测工具。全仓纯 NumPy、零后端、可在浏览器里直接拖动参数观察每一步计算过程。
         </p>
 
         <div class="hero__actions">
@@ -128,12 +128,12 @@
 
           <label class="toggle-chip is-on" id="chip-local-norm">
             <input type="checkbox" id="toggle-local-norm" checked />
-            <span>开关 A：v3 词内局部 Min-Max（关＝全局归一化）</span>
+            <span>开关 A：词内局部 Min-Max（关＝全局归一化）</span>
           </label>
 
           <label class="toggle-chip is-on" id="chip-frame-center">
             <input type="checkbox" id="toggle-frame-center" checked />
-            <span>开关 B：v3 帧中心重采样（消除 ~12.5 ms 漂移）</span>
+            <span>开关 B：帧中心重采样（消除 ~12.5 ms 漂移）</span>
           </label>
         </div>
 
@@ -147,7 +147,7 @@
                 <span class="legend__item"><span class="dot" style="background:var(--coral)"></span>字间落刀线</span>
               </span>
             </div>
-            <canvas id="canvas-wave" class="stage" height="220" style="cursor:ew-resize;"></canvas>
+            <canvas id="canvas-wave" class="stage" height="132" style="cursor:ew-resize;"></canvas>
           </div>
 
           <div class="track-box">
@@ -159,7 +159,7 @@
                 <span class="legend__item"><span class="dot" style="background:var(--teal)"></span>融合包络 fused_db</span>
               </span>
             </div>
-            <canvas id="canvas-bands" class="stage" height="220"></canvas>
+            <canvas id="canvas-bands" class="stage" height="132"></canvas>
           </div>
 
           <div class="track-box">
@@ -171,7 +171,7 @@
                 <span class="legend__item"><span class="dot" style="background:var(--coral)"></span>argmin 激光落刀点</span>
               </span>
             </div>
-            <canvas id="canvas-valley" class="stage" height="190"></canvas>
+            <canvas id="canvas-valley" class="stage" height="118"></canvas>
           </div>
         </div>
 
@@ -189,7 +189,7 @@
         </div>
         <div class="module__side">
           <p class="module__desc">
-            左侧用真实候选分数演示 <code>Robust Median-MAD</code> 抗异常尖峰与 v3 <code>continue</code> 防误杀机制；右侧用 <code>LogisticCalibrator</code> 10-bin 可靠性曲线直观展示先验对数几率修正如何把虚高概率拉回 <code>y = x</code>。
+            左侧用真实候选分数演示 <code>Robust Median-MAD</code> 抗异常尖峰与 <code>continue</code> 防误杀机制；右侧用 <code>LogisticCalibrator</code> 10-bin 可靠性曲线直观展示先验对数几率修正如何把虚高概率拉回 <code>y = x</code>。
           </p>
         </div>
       </div>
@@ -203,12 +203,12 @@
               <button class="seg-btn" data-utt="pure_negative" type="button">纯负样本拒识</button>
             </div>
             <div class="seg-group" id="norm-method-group">
-              <button class="seg-btn is-active" data-norm="robust" type="button">v3 Robust MAD</button>
+              <button class="seg-btn is-active" data-norm="robust" type="button">Robust MAD</button>
               <button class="seg-btn" data-norm="zscore" type="button">传统 Z-score</button>
             </div>
           </div>
 
-          <canvas id="canvas-decoder" class="stage" height="330"></canvas>
+          <canvas id="canvas-decoder" class="stage" height="260"></canvas>
 
           <div class="slider-grid">
             <div class="slider-box">
@@ -239,10 +239,10 @@
               <strong style="font-size:14.5px;">10-bin 可靠性曲线（Reliability Diagram）</strong>
               <label class="toggle-chip is-on" id="chip-prior-fix">
                 <input type="checkbox" id="toggle-prior-fix" checked />
-                <span>开启 v3 先验修正</span>
+                <span>开启先验修正</span>
               </label>
             </div>
-            <canvas id="canvas-reliability" class="stage" height="300"></canvas>
+            <canvas id="canvas-reliability" class="stage" height="215"></canvas>
             <div class="stat-row" id="calib-stats" style="margin-top:8px;"></div>
           </div>
 
@@ -251,7 +251,7 @@
               <strong style="font-size:14px;">F1 vs 误报率（FAR）工作面</strong>
               <span class="mono" style="font-size:12px; color:var(--muted);" id="surface-point-label"></span>
             </div>
-            <canvas id="canvas-surface" class="stage" height="220"></canvas>
+            <canvas id="canvas-surface" class="stage" height="175"></canvas>
           </div>
         </div>
       </div>
@@ -266,7 +266,7 @@
         </div>
         <div class="module__side">
           <p class="module__desc">
-            拖走任意预测框让 <code>IoU</code> 跌到 <code>0.0</code>，或点击预测标签切换 <code>reading / text-fallback / no-position</code>，亲眼观察「天真指标」如何通过忽略脱靶同词与无位误报粉饰太平，以及 v3 诚实指标如何一针见血。
+            拖走任意预测框让 <code>IoU</code> 跌到 <code>0.0</code>，或点击预测标签切换 <code>reading / text-fallback / no-position</code>，亲眼观察宽松统计如何掩盖脱靶同词与无位误报，以及诚实口径如何还原真实短板。
           </p>
         </div>
       </div>
@@ -283,7 +283,7 @@
           </div>
         </div>
 
-        <canvas id="canvas-hungarian" class="stage" height="360" style="cursor:grab;"></canvas>
+        <canvas id="canvas-hungarian" class="stage" height="235" style="cursor:grab;"></canvas>
         <div class="span-controls" id="span-controls"></div>
 
         <div class="compare-grid" id="eval-compare-grid"></div>
@@ -301,7 +301,7 @@
           </div>
         </div>
         <div class="grid-asymmetric" style="align-items:center;">
-          <canvas id="canvas-freq" class="stage" height="340"></canvas>
+          <canvas id="canvas-freq" class="stage" height="250"></canvas>
           <div>
             <div class="stat-row" id="freq-stats" style="grid-template-columns: repeat(2, minmax(0,1fr)); margin-top:0;"></div>
             <div class="callout callout--coral" id="freq-callout" style="margin-top:12px;"></div>
@@ -319,7 +319,7 @@
         </div>
         <div class="module__side">
           <p class="module__desc">
-            修改下方方言热词表实时生成合成规划：左边直观对比 <code>len(lexicon) % 3 == 0</code> 时的传统取模对角线死锁与 v3 均匀覆盖；右边点击「一键注入隐患」即可触发 <code>validate_plan</code> 红灯警报。
+            修改下方方言热词表实时生成合成规划：左边直观对比 <code>len(lexicon) % 3 == 0</code> 时的简单取模对角线死锁与均匀覆盖；右边点击「一键注入隐患」即可触发 <code>validate_plan</code> 红灯警报。
           </p>
         </div>
       </div>
@@ -333,8 +333,8 @@
             <button id="btn-plan-leak" class="btn btn--danger btn--sm" type="button">☢ 一键注入隐患（子串+泄漏）</button>
           </div>
           <div class="seg-group" id="plan-mode-group">
-            <button class="seg-btn is-active" data-pmode="v3" type="button">v3 三位置均匀规划</button>
-            <button class="seg-btn" data-pmode="naive_mod" type="button">传统简单取模（看死锁）</button>
+            <button class="seg-btn is-active" data-pmode="v3" type="button">三位置均匀规划</button>
+            <button class="seg-btn" data-pmode="naive_mod" type="button">简单取模（看死锁）</button>
           </div>
         </div>
 
@@ -357,7 +357,7 @@
             </div>
             <span id="contract-summary" class="mono"></span>
           </div>
-          <canvas id="canvas-contract" class="stage" height="280"></canvas>
+          <canvas id="canvas-contract" class="stage" height="215"></canvas>
         </div>
 
         <div class="grid-2" style="margin-top:16px;">
