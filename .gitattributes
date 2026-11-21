@@ -1,0 +1,8 @@
+* text=auto
+*.png binary
+*.gif binary
+*.jpg binary
+*.wav binary
+*.flac binary
+*.pt binary
+*.npz binary

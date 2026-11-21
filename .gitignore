@@ -1,0 +1,16 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.venv/
+venv/
+.idea/
+.vscode/
+.DS_Store
+*.wav
+*.flac
+*.mp3
+*.npy
+*.npz
+*.pt
+*.patch

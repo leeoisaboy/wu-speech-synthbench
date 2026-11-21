@@ -1,0 +1,69 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "wu-speech-synthbench"
+version = "3.0.0"
+description = "Zero-resource synthetic dialect corpus planning, signal timestamping, probability calibration, and honest evaluation"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Wu-Speech-SynthBench Contributors" }]
+keywords = [
+  "dialect",
+  "low-resource",
+  "speech-processing",
+  "speech",
+  "benchmark",
+  "keyword-spotting",
+  "synthetic-data",
+  "data-validation",
+  "calibration",
+  "signal-processing",
+  "fft",
+  "numpy",
+  "white-box-ai",
+  "interpretability",
+  "evaluation",
+  "hungarian-algorithm",
+  "timestamp-alignment",
+  "github-pages",
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Science/Research",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+  "Topic :: Scientific/Engineering :: Information Analysis",
+]
+dependencies = ["numpy>=1.24"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[project.scripts]
+wu-speech-synthbench = "wu_speech_synthbench.cli:main"
+
+[project.urls]
+Homepage = "https://leeoisaboy.github.io/wu-speech-synthbench/"
+Repository = "https://github.com/leeoisaboy/wu-speech-synthbench"
+Issues = "https://github.com/leeoisaboy/wu-speech-synthbench/issues"
+Documentation = "https://github.com/leeoisaboy/wu-speech-synthbench/tree/main/docs"
+
+[tool.setuptools]
+packages = [
+    "wu_speech_synthbench",
+    "wu_speech_synthbench.synth_pipeline",
+    "wu_speech_synthbench.auto_timestamp",
+    "wu_speech_synthbench.set_prediction",
+    "wu_speech_synthbench.eval_metrics",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

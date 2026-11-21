@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#fbfbfd" />
+  <meta name="description" content="SynthBench Studio：低资源方言语音白盒标定与质检台 — 能量谷切字显微镜、先验概率校准仪、匈牙利防刷分测谎仪与泄漏 X 光扫描器。" />
+  <title>SynthBench Studio — 方言语音白盒标定与质检台</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400..700&amp;family=Noto+Sans+SC:wght@400..700&amp;family=Roboto+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%232b9c94'/%3E%3Cpath d='M4 13h3l2-6 3 12 2-6h6' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="static/studio.css?v=v3-20261121" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar__inner">
+      <a class="brand" href="./" aria-label="SynthBench Studio 首页">
+        <span class="brand__mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 12h3l2.2-6 3.1 12 2.4-6H21" />
+          </svg>
+        </span>
+        <span class="brand__text"><strong>SynthBench</strong><span>Studio</span></span>
+      </a>
+
+      <nav class="quartet-nav" aria-label="低资源方言语音白盒研究四部曲导航">
+        <a href="./" class="is-current" aria-current="page">① 合成质检标定</a>
+        <span class="quartet-nav__sep" aria-hidden="true">·</span>
+        <a href="https://leeoisaboy.github.io/disentangle-acoustic-print/" target="_blank" rel="noopener">② 声学几何示波</a>
+        <span class="quartet-nav__sep" aria-hidden="true">·</span>
+        <a href="https://leeoisaboy.github.io/dialect-crossmodal-align/" target="_blank" rel="noopener">③ 跨模态对齐实验室</a>
+        <span class="quartet-nav__sep" aria-hidden="true">·</span>
+        <a href="https://leeoisaboy.github.io/audiollm-latent-kws/" target="_blank" rel="noopener">④ 大模型审计台</a>
+      </nav>
+
+      <div class="topbar__meta">
+        <span class="live-pill">
+          <span class="status-dot" aria-hidden="true"></span>
+          <span>v3 纯 NumPy 标定台</span>
+        </span>
+        <a class="compact-button" href="https://github.com/leeoisaboy/wu-speech-synthbench" target="_blank" rel="noopener">GitHub ↗</a>
+      </div>
+    </div>
+  </header>
+
+  <main class="story">
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="hero__center">
+        <p class="eyebrow">WU-SPEECH-SYNTHBENCH V3 · QA &amp; CALIBRATION STUDIO</p>
+        <h1 id="hero-title">拒绝虚高指标，<br /><span>把五个隐藏工程坑摆上台面。</span></h1>
+        <p class="hero__lede">
+          低资源方言语音评测里最难察觉的五个坑——静音稀释能量谷、高频清擦音漏切、先验概率失校准、多区间匹配刷分、硬负样本词表泄漏——全部做成全仓纯 NumPy、零后端、可在浏览器里亲手拖动的白盒标定台。
+        </p>
+
+        <div class="hero__actions">
+          <a href="#sec-dsp" class="btn btn--primary">① 能量谷切字显微镜 ↓</a>
+          <a href="#sec-calib" class="btn btn--secondary">② 集合解码与先验校准</a>
+          <a href="#sec-eval" class="btn btn--secondary">③ 匈牙利防刷分测谎仪</a>
+          <a href="#sec-plan" class="btn btn--quiet">④ 语料规划与泄漏 X 光</a>
+        </div>
+
+        <div class="kpi-strip" aria-label="核心精算特性">
+          <div class="kpi-item">
+            <span class="kpi-item__num kpi-item__num--teal">100% NumPy</span>
+            <span class="kpi-item__label">零重型模型依赖 · 浏览器 1:1 复现</span>
+          </div>
+          <div class="kpi-item">
+            <span class="kpi-item__num">~12.5 ms</span>
+            <span class="kpi-item__label">帧中心后验重采样消除半窗漂移</span>
+          </div>
+          <div class="kpi-item">
+            <span class="kpi-item__num kpi-item__num--coral">0.68 → 0.36</span>
+            <span class="kpi-item__label">负样本不再贡献白捡的完整召回分</span>
+          </div>
+          <div class="kpi-item">
+            <span class="kpi-item__num kpi-item__num--violet">全词表体检</span>
+            <span class="kpi-item__label">硬负样本 + 背景 + 子串三重泄漏审计</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- MODULE 1: ENERGY VALLEY DSP -->
+    <section id="sec-dsp" class="module">
+      <div class="module__head">
+        <div>
+          <p class="module__kicker">01 · AUTO_TIMESTAMP / ENERGY_VALLEY.PY</p>
+          <h2 class="module__title">信号级「能量谷」切字显微镜</h2>
+          <p class="module__desc">
+            浏览器端纯 JS 1:1 运行零相位 FFT 带通（<code>300–3400 Hz</code>）、Hann 窗、Parseval 高频子带（<code>2000–4000 Hz</code>）与谱通量。支持内置样例、拖入本地 <code>.wav</code> 文件或麦克风现场录音试切。
+          </p>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="dropzone" id="wav-dropzone">
+          <div>
+            <strong>支持真实音频：</strong>拖入任意本地 <code>.wav</code> 文件到此区域，或直接点击上传 / 麦克风录音（2 秒）现场切字。
+          </div>
+          <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+            <label class="btn btn--secondary btn--sm" style="margin:0;">
+              上传 .wav
+              <input id="wav-file-input" type="file" accept="audio/*" hidden />
+            </label>
+            <button id="btn-record-mic" class="btn btn--secondary btn--sm" type="button">🎙 麦克风录 2 秒</button>
+            <button id="btn-play-audio" class="btn btn--quiet btn--sm" type="button">▶ 试听音频</button>
+          </div>
+        </div>
+
+        <div class="toolbar">
+          <div class="seg-group" id="dsp-preset-group" role="tablist" aria-label="内置样例切换">
+            <button class="seg-btn is-active" data-preset="shaoshui" type="button">样例：烧水（清擦音 sh）</button>
+            <button class="seg-btn" data-preset="kaideng" type="button">样例：开灯（送气音 k）</button>
+          </div>
+
+          <label class="toggle-chip" style="gap:6px;">
+            <span>词条文本</span>
+            <input id="dsp-chars-input" type="text" value="烧水" maxlength="5" style="width:68px; border:1px solid var(--hairline-strong); border-radius:7px; padding:2px 6px; font-weight:600;" />
+          </label>
+
+          <label class="toggle-chip is-on" id="chip-local-norm">
+            <input type="checkbox" id="toggle-local-norm" checked />
+            <span>开关 A：v3 词内局部 Min-Max（关＝全局归一化）</span>
+          </label>
+
+          <label class="toggle-chip is-on" id="chip-frame-center">
+            <input type="checkbox" id="toggle-frame-center" checked />
+            <span>开关 B：v3 帧中心重采样（消除 ~12.5 ms 漂移）</span>
+          </label>
+        </div>
+
+        <div class="track-stack">
+          <div class="track-box">
+            <div class="track-box__head">
+              <span class="track-box__title">第 1 轨：时域波形 + 可拖拽汉字锚点（anchor_times）</span>
+              <span class="legend">
+                <span class="legend__item"><span class="dot" style="background:var(--blue)"></span>波形</span>
+                <span class="legend__item"><span class="dot" style="background:var(--teal)"></span>_refine_edge 自动起止框</span>
+                <span class="legend__item"><span class="dot" style="background:var(--coral)"></span>字间落刀线</span>
+              </span>
+            </div>
+            <canvas id="canvas-wave" class="stage" height="145" style="cursor:ew-resize;"></canvas>
+          </div>
+
+          <div class="track-box">
+            <div class="track-box__head">
+              <span class="track-box__title">第 2 轨：双频带物理标尺叠图（Parseval 守恒）</span>
+              <span class="legend">
+                <span class="legend__item"><span class="dot" style="background:var(--blue)"></span>语音频带 energy_db (300–3400Hz)</span>
+                <span class="legend__item"><span class="dot" style="background:var(--amber)"></span>高频子带 high_band_db (2000–4000Hz)</span>
+                <span class="legend__item"><span class="dot" style="background:var(--teal)"></span>融合包络 fused_db</span>
+              </span>
+            </div>
+            <canvas id="canvas-bands" class="stage" height="145"></canvas>
+          </div>
+
+          <div class="track-box">
+            <div class="track-box__head">
+              <span class="track-box__title">第 3 轨：字间切割代价谷底（word_valley_cost + 后验交叉）</span>
+              <span class="legend">
+                <span class="legend__item"><span class="dot" style="background:var(--violet)"></span>valley_cost</span>
+                <span class="legend__item"><span class="dot" style="background:var(--teal)"></span>后验交叉代价</span>
+                <span class="legend__item"><span class="dot" style="background:var(--coral)"></span>argmin 激光落刀点</span>
+              </span>
+            </div>
+            <canvas id="canvas-valley" class="stage" height="140"></canvas>
+          </div>
+        </div>
+
+        <div class="stat-row" id="dsp-stats"></div>
+        <div class="callout callout--teal" id="dsp-callout"></div>
+      </div>
+    </section>
+
+    <!-- MODULE 2: SET DECODER & CALIBRATION -->
+    <section id="sec-calib" class="module">
+      <div class="module__head">
+        <div>
+          <p class="module__kicker">02 · SET_PREDICTION / MULTI_KW_DECODER.PY &amp; SCORE_VECTOR_BASELINE.PY</p>
+          <h2 class="module__title">多词集合解码器 × 先验概率校准仪</h2>
+          <p class="module__desc">
+            左侧用真实候选分数演示 <code>Robust Median-MAD</code> 抗异常尖峰与 v3 <code>continue</code> 防误杀机制；右侧用 <code>LogisticCalibrator</code> 10-bin 可靠性曲线直观展示先验对数几率修正如何把虚高概率拉回 <code>y = x</code>。
+          </p>
+        </div>
+      </div>
+
+      <div class="grid-asymmetric">
+        <div class="panel">
+          <div class="toolbar">
+            <div class="seg-group" id="utt-preset-group">
+              <button class="seg-btn is-active" data-utt="multi_phrase" type="button">多词句：开灯+拉窗帘</button>
+              <button class="seg-btn" data-utt="continue_rescue" type="button">排序分歧救援</button>
+              <button class="seg-btn" data-utt="pure_negative" type="button">纯负样本拒识</button>
+            </div>
+            <div class="seg-group" id="norm-method-group">
+              <button class="seg-btn is-active" data-norm="robust" type="button">v3 Robust MAD</button>
+              <button class="seg-btn" data-norm="zscore" type="button">传统 Z-score</button>
+            </div>
+          </div>
+
+          <canvas id="canvas-decoder" class="stage" height="240"></canvas>
+
+          <div class="slider-grid">
+            <div class="slider-box">
+              <label><span>干扰词异常尖峰</span><strong class="mono" id="val-spike">+0.00</strong></label>
+              <input id="slider-spike" type="range" min="0" max="6" step="0.1" value="0" />
+            </div>
+            <div class="slider-box">
+              <label><span>cap（最多输出词数）</span><strong class="mono" id="val-cap">2</strong></label>
+              <input id="slider-cap" type="range" min="1" max="4" step="1" value="2" />
+            </div>
+            <div class="slider-box">
+              <label><span>margin（z 间隔阈值）</span><strong class="mono" id="val-margin">1.5</strong></label>
+              <input id="slider-margin" type="range" min="0.5" max="2.5" step="0.5" value="1.5" />
+            </div>
+            <div class="slider-box">
+              <label><span>min_probability</span><strong class="mono" id="val-minp">0.45</strong></label>
+              <input id="slider-minp" type="range" min="0.15" max="0.85" step="0.15" value="0.45" />
+            </div>
+          </div>
+
+          <div class="stat-row" id="decoder-stats" aria-live="polite"></div>
+          <div class="callout" id="decoder-callout" aria-live="polite"></div>
+        </div>
+
+        <div class="panel" style="display:flex; flex-direction:column; gap:14px;">
+          <div>
+            <div class="toolbar" style="justify-content:space-between; margin-bottom:8px;">
+              <strong style="font-size:14.5px;">10-bin 可靠性曲线（Reliability Diagram）</strong>
+              <label class="toggle-chip is-on" id="chip-prior-fix">
+                <input type="checkbox" id="toggle-prior-fix" checked />
+                <span>开启 v3 先验修正</span>
+              </label>
+            </div>
+            <canvas id="canvas-reliability" class="stage" height="225"></canvas>
+            <div class="stat-row" id="calib-stats" style="margin-top:8px;"></div>
+          </div>
+
+          <div style="border-top:1px solid var(--hairline); padding-top:12px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+              <strong style="font-size:14px;">F1 vs 误报率（FAR）工作面</strong>
+              <span class="mono" style="font-size:12px; color:var(--muted);" id="surface-point-label"></span>
+            </div>
+            <canvas id="canvas-surface" class="stage" height="170"></canvas>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- MODULE 3: HUNGARIAN LIE DETECTOR & FREQUENCY BIAS -->
+    <section id="sec-eval" class="module">
+      <div class="module__head">
+        <div>
+          <p class="module__kicker">03 · EVAL_METRICS / LOCALISATION.PY &amp; RANKING.PY</p>
+          <h2 class="module__title">评测「测谎仪」：匈牙利多区间匹配 × 防刷分透视镜</h2>
+          <p class="module__desc">
+            拖走任意预测框让 <code>IoU</code> 跌到 <code>0.0</code>，或点击预测标签切换 <code>reading / text-fallback / no-position</code>，亲眼观察「天真指标」如何通过忽略脱靶同词与无位误报粉饰太平，以及 v3 诚实指标如何一针见血。
+          </p>
+        </div>
+      </div>
+
+      <div class="panel" style="margin-bottom:18px;">
+        <div class="toolbar" style="justify-content:space-between;">
+          <div>
+            <strong style="font-size:14.5px;">长句时间轴：</strong>
+            <span style="color:var(--ink-soft); font-size:14px;">「先去开灯，再烧水，顺便拉窗帘，最后打开电视。」</span>
+          </div>
+          <div style="display:flex; gap:8px;">
+            <button id="btn-drift-demo" class="btn btn--danger btn--sm" type="button">一键拖偏测试（暴露水分）</button>
+            <button id="btn-reset-spans" class="btn btn--quiet btn--sm" type="button">重置区间</button>
+          </div>
+        </div>
+
+        <canvas id="canvas-hungarian" class="stage" height="235" style="cursor:grab;"></canvas>
+        <div class="span-controls" id="span-controls"></div>
+
+        <div class="compare-grid" id="eval-compare-grid"></div>
+      </div>
+
+      <div class="panel">
+        <div class="toolbar" style="justify-content:space-between;">
+          <div>
+            <strong style="font-size:15px;">头 / 中 / 尾词频偏置雷达（<code>frequency_bias</code>）</strong>
+            <span style="font-size:13px; color:var(--muted); margin-left:8px;">Micro 看似 82%+ 时，长尾方言词（Tail）是不是已经崩了？</span>
+          </div>
+          <div class="seg-group" id="freq-preset-group">
+            <button class="seg-btn is-active" data-freq="head_biased" type="button">高频偏置模型（长尾崩盘）</button>
+            <button class="seg-btn" data-freq="balanced" type="button">均衡模型（长尾稳健）</button>
+          </div>
+        </div>
+        <div class="grid-asymmetric" style="align-items:center;">
+          <canvas id="canvas-freq" class="stage" height="255"></canvas>
+          <div>
+            <div class="stat-row" id="freq-stats" style="grid-template-columns: repeat(2, minmax(0,1fr)); margin-top:0;"></div>
+            <div class="callout callout--coral" id="freq-callout" style="margin-top:12px;"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- MODULE 4: MANIFEST SANDBOX & LEAKAGE X-RAY -->
+    <section id="sec-plan" class="module">
+      <div class="module__head">
+        <div>
+          <p class="module__kicker">04 · SYNTH_PIPELINE / MANIFEST.PY</p>
+          <h2 class="module__title">语料规划沙盘：三位置平衡棋盘 × 泄漏 X 光扫描器</h2>
+          <p class="module__desc">
+            修改下方方言热词表实时生成合成规划：左边直观对比 <code>len(lexicon) % 3 == 0</code> 时的传统取模对角线死锁与 v3 均匀覆盖；右边点击「一键注入隐患」即可触发 <code>validate_plan</code> 红灯警报。
+          </p>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="toolbar" style="justify-content:space-between;">
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button id="btn-plan-run" class="btn btn--primary btn--sm" type="button">生成基准规划</button>
+            <button id="btn-plan-9" class="btn btn--secondary btn--sm" type="button">9 词死锁对照（len%3=0）</button>
+            <button id="btn-plan-10" class="btn btn--secondary btn--sm" type="button">10 词默认词表</button>
+            <button id="btn-plan-leak" class="btn btn--danger btn--sm" type="button">☢ 一键注入隐患（子串+泄漏）</button>
+          </div>
+          <div class="seg-group" id="plan-mode-group">
+            <button class="seg-btn is-active" data-pmode="v3" type="button">v3 三位置均匀规划</button>
+            <button class="seg-btn" data-pmode="naive_mod" type="button">传统简单取模（看死锁）</button>
+          </div>
+        </div>
+
+        <textarea id="lexicon-textarea" class="lexicon-input" aria-label="输入词表，每行一个词">开灯
+关窗
+烧水
+调温度
+开风扇
+拉窗帘
+放音乐
+查日程
+扫地
+打开电视</textarea>
+
+        <div class="grid-2" style="margin-top:16px;">
+          <div>
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <strong style="font-size:14.5px;">位置覆盖热力矩阵（词语 × 句首 / 句中 / 句尾）</strong>
+              <span class="mono" style="font-size:12px; color:var(--muted);" id="heatmap-summary"></span>
+            </div>
+            <div id="heatmap-container"></div>
+          </div>
+
+          <div>
+            <strong style="font-size:14.5px; display:block; margin-bottom:10px;"><code>validate_plan</code> 泄漏与契约 X 光体检报告</strong>
+            <div id="xray-report"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <div>
+        <strong>Wu-Speech-SynthBench (v3)</strong> · 低资源方言语音白盒研究四部曲 ① · 全仓纯 NumPy、MIT License
+      </div>
+      <div style="display:flex; gap:14px; flex-wrap:wrap;">
+        <a href="https://github.com/leeoisaboy/wu-speech-synthbench" target="_blank" rel="noopener">GitHub 仓库</a>
+        <a href="https://leeoisaboy.github.io/disentangle-acoustic-print/" target="_blank" rel="noopener">Acoustic Print Studio</a>
+        <a href="https://leeoisaboy.github.io/dialect-crossmodal-align/" target="_blank" rel="noopener">CrossModal Align Lab</a>
+        <a href="https://leeoisaboy.github.io/audiollm-latent-kws/" target="_blank" rel="noopener">Latent-KWS Audit Studio</a>
+      </div>
+    </footer>
+  </main>
+
+  <script src="static/studio.js?v=v3-20261121"></script>
+</body>
+</html>
