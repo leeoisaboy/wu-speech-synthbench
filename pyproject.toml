@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "wu-speech-synthbench"
-version = "3.1.0"
+version = "3.1.1"
 description = "Zero-resource synthetic dialect corpus planning, signal timestamping, probability calibration, and honest evaluation"
 readme = "README.md"
 requires-python = ">=3.10"
