@@ -29,7 +29,7 @@
 
 <p align="center"><strong><a href="https://leeoisaboy.github.io/wu-speech-synthbench/">Open SynthBench Studio</a></strong></p>
 
-The recording above comes from the live static page. There is no backend and no audio upload. A dropped WAV or a microphone sample is decoded inside the browser. The four modules expose the repository's automatic timestamping, set decoding, probability calibration, multi-span localisation, and corpus-planning logic.
+The recording above comes from the live static page. Each unit is a borderless, full-viewport chapter. It fades in on entry, recedes naturally on exit, and the charts draw themselves and continue to evolve. Pointer input takes over the autonomous demo, then hands control back after a short pause. There is no backend and no audio upload. A dropped WAV or a microphone sample is decoded inside the browser. The four modules expose the repository's automatic timestamping, set decoding, probability calibration, multi-span localisation, and corpus-planning logic.
 
 | Module | What the page shows | Implementation |
 | --- | --- | --- |

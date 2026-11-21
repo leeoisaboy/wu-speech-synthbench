@@ -31,6 +31,71 @@
   };
 
   const app = { bundle: null, dsp: null, decoder: null, eval: null, plan: null };
+  const motion = {
+    active: new Set(),
+    enteredAt: new Map(),
+    drawers: new Map(),
+    reduce: Boolean(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches),
+  };
+
+  function registerAmbientDrawer(key, draw) {
+    motion.drawers.set(key, draw);
+  }
+
+  function sectionProgress(key, duration = 1450) {
+    if (motion.reduce) return 1;
+    const enteredAt = motion.enteredAt.get(key) || performance.now();
+    const raw = clamp((performance.now() - enteredAt) / duration, 0, 1);
+    return 1 - Math.pow(1 - raw, 3);
+  }
+
+  function sectionIsActive(key) {
+    return motion.active.has(key);
+  }
+
+  function installScrollStory() {
+    const targets = $$('[data-reveal]');
+    if (motion.reduce || !('IntersectionObserver' in window)) {
+      targets.forEach(target => {
+        target.classList.add('is-inview');
+        motion.active.add(target.dataset.reveal);
+        motion.enteredAt.set(target.dataset.reveal, performance.now());
+      });
+      return;
+    }
+    const observer = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        const key = entry.target.dataset.reveal;
+        const visible = entry.isIntersecting;
+        entry.target.classList.toggle('is-inview', visible);
+        if (visible) {
+          if (!motion.active.has(key)) motion.enteredAt.set(key, performance.now());
+          motion.active.add(key);
+        } else {
+          motion.active.delete(key);
+        }
+      });
+    }, { rootMargin: '-6% 0px -10% 0px', threshold: [0.04, 0.12, 0.28] });
+    targets.forEach(target => observer.observe(target));
+  }
+
+  function startAmbientLoop() {
+    if (motion.reduce) {
+      motion.drawers.forEach(draw => draw(performance.now(), 1));
+      return;
+    }
+    let last = 0;
+    const step = now => {
+      if (now - last >= 30) {
+        last = now;
+        motion.drawers.forEach((draw, key) => {
+          if (sectionIsActive(key)) draw(now, sectionProgress(key));
+        });
+      }
+      requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  }
 
   function setupCanvas(canvas) {
     if (!canvas) return null;
@@ -322,6 +387,7 @@
       presetId: 'shaoshui', characters: '烧水', anchors: [0.33, 0.64], posteriors: null,
       posteriorHop: 0.02, audioBuffer: null, signal: null, sampleRate: 8000, decoded: null,
       localNorm: true, frameCenter: true, dragIndex: -1, playStart: 0, playRequest: 0,
+      ambientTime: null, ambientStart: performance.now(), manualUntil: 0,
     };
     app.dsp = state;
     const waveCanvas = $('#canvas-wave'), bandsCanvas = $('#canvas-bands'), valleyCanvas = $('#canvas-valley');
@@ -433,11 +499,20 @@
       ctx.fillText('0 s', plot.left, height - 7);
       ctx.textAlign = 'right'; ctx.fillText(`${duration.toFixed(2)} s`, plot.right, height - 7);
       ctx.textAlign = 'center'; ctx.fillText('拖动汉字锚点 → 观察自动回退边界与落刀点', (plot.left + plot.right) / 2, height - 7);
-      if (state.playStart) {
-        const time = clamp((performance.now() - state.playStart) / 1000, 0, duration);
-        const x = plot.x(time);
-        ctx.strokeStyle = palette.blue; ctx.lineWidth = 1.5;
+      const playhead = state.playStart
+        ? clamp((performance.now() - state.playStart) / 1000, 0, duration)
+        : state.ambientTime;
+      if (Number.isFinite(playhead)) {
+        const x = plot.x(playhead);
+        const glow = ctx.createLinearGradient(x - 20, 0, x + 4, 0);
+        glow.addColorStop(0, 'rgba(0,113,227,0)');
+        glow.addColorStop(1, 'rgba(0,113,227,.18)');
+        ctx.fillStyle = glow;
+        ctx.fillRect(x - 20, plot.top, 24, plot.bottom - plot.top);
+        ctx.strokeStyle = 'rgba(0,113,227,.82)'; ctx.lineWidth = 1.4;
         ctx.beginPath(); ctx.moveTo(x, plot.top); ctx.lineTo(x, plot.bottom); ctx.stroke();
+        ctx.fillStyle = palette.blue;
+        ctx.beginPath(); ctx.arc(x, plot.top + 5, 2.8, 0, Math.PI * 2); ctx.fill();
       }
     }
 
@@ -468,6 +543,17 @@
       ctx.fillStyle = palette.muted; ctx.font = '10px Roboto Mono, monospace'; ctx.textAlign = 'left';
       ctx.fillText(`${low.toFixed(0)} dB`, 2, plot.bottom); ctx.fillText(`${high.toFixed(0)} dB`, 2, plot.top + 8);
       ctx.textAlign = 'right'; ctx.fillText(state.localNorm ? '局部标尺' : '全局标尺', plot.right, plot.top + 8);
+      if (Number.isFinite(state.ambientTime)) {
+        const scanX = plot.x(state.ambientTime);
+        const scan = ctx.createLinearGradient(scanX - 28, 0, scanX + 4, 0);
+        scan.addColorStop(0, 'rgba(43,156,148,0)');
+        scan.addColorStop(1, 'rgba(43,156,148,.16)');
+        ctx.fillStyle = scan;
+        ctx.fillRect(scanX - 28, plot.top, 32, plot.bottom - plot.top);
+        ctx.strokeStyle = 'rgba(43,156,148,.42)';
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(scanX, plot.top); ctx.lineTo(scanX, plot.bottom); ctx.stroke();
+      }
     }
 
     function renderValley(canvas, decoded) {
@@ -501,11 +587,26 @@
       });
       ctx.fillStyle = palette.muted; ctx.font = '10px Roboto Mono, monospace'; ctx.textAlign = 'left';
       ctx.fillText('argmin → 激光落刀', plot.left, height - 7); ctx.textAlign = 'right'; ctx.fillText(`${decoded.boundaries.length - 2} 个内部切点`, plot.right, height - 7);
+      if (Number.isFinite(state.ambientTime)) {
+        const scanX = plot.x(state.ambientTime);
+        ctx.fillStyle = 'rgba(123,107,176,.10)';
+        ctx.fillRect(scanX - 18, plot.top, 18, plot.bottom - plot.top);
+        ctx.strokeStyle = 'rgba(123,107,176,.48)';
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(scanX, plot.top); ctx.lineTo(scanX, plot.bottom); ctx.stroke();
+      }
+    }
+
+    function drawDspCharts() {
+      if (!state.decoded) return;
+      renderWave(waveCanvas, state.decoded);
+      renderBands(bandsCanvas, state.decoded);
+      renderValley(valleyCanvas, state.decoded);
     }
 
     function renderDsp() {
       if (!state.decoded) return;
-      renderWave(waveCanvas, state.decoded); renderBands(bandsCanvas, state.decoded); renderValley(valleyCanvas, state.decoded);
+      drawDspCharts();
       const pyRef = bundle.dsp_presets.find(item => item.id === state.presetId)?.py_reference;
       const referenceStarts = pyRef?.characters?.map(item => item.start_time) || [];
       const drift = referenceStarts.length === state.decoded.spans.length ? Math.abs(state.decoded.spans[0].start - referenceStarts[0]) * 1000 : 0;
@@ -658,6 +759,12 @@
       } catch (error) { $('#dsp-callout').textContent = `无法开启麦克风：${error.message}`; }
     });
 
+    registerAmbientDrawer('dsp', now => {
+      if (!state.decoded) return;
+      const duration = state.decoded.features.duration;
+      state.ambientTime = ((now - state.ambientStart) / 1000) % duration;
+      drawDspCharts();
+    });
     window.addEventListener('resize', () => { if (app.dsp?.decoded) renderDsp(); });
     loadPreset('shaoshui');
   }
@@ -667,7 +774,7 @@
   // ---------------------------------------------------------------------------
   function initDecoder(bundle) {
     const data = bundle.calibration_decoder;
-    const state = { utteranceId: 'multi_phrase', normalization: 'robust', spike: 0, cap: 2, margin: 1.5, minProbability: 0.45, priorFix: true };
+    const state = { utteranceId: 'multi_phrase', normalization: 'robust', spike: 0, cap: 2, margin: 1.5, minProbability: 0.45, priorFix: true, manualUntil: 0, lastAmbientUi: 0 };
     app.decoder = state;
 
     function normalizeScores(scores, method) {
@@ -723,7 +830,7 @@
       return { utterance, probabilities, selected, selectedNames, expected, order };
     }
 
-    function renderDecoderCanvas(model) {
+    function renderDecoderCanvas(model, grow = 1, now = performance.now()) {
       const surface = setupCanvas($('#canvas-decoder'));
       if (!surface) return;
       const { ctx, width, height } = surface;
@@ -741,15 +848,20 @@
         ctx.fillStyle = isExpected ? palette.teal : palette.ink;
         ctx.font = isExpected ? '600 11px Noto Sans SC, sans-serif' : '11px Noto Sans SC, sans-serif';
         ctx.textAlign = 'left'; ctx.fillText(phrase, 10, y);
-        const zBar = Math.abs(item.z) / zMax * (width - left - right) * 0.44;
+        const zBar = Math.abs(item.z) / zMax * (width - left - right) * 0.44 * grow;
         ctx.fillStyle = item.z >= 0 ? 'rgba(0,113,227,.32)' : 'rgba(123,107,176,.25)';
         roundedRect(ctx, left, y - 7, zBar, 6, 3); ctx.fill();
-        const probBar = item.prob * (width - left - right) * 0.44;
+        const probBar = item.prob * (width - left - right) * 0.44 * grow;
         ctx.fillStyle = isSelected ? palette.teal : item.candidate.spike_target ? palette.coral : 'rgba(199,125,26,.55)';
         roundedRect(ctx, left + (width - left - right) * 0.50, y - 7, probBar, 6, 3); ctx.fill();
         ctx.fillStyle = isSelected ? palette.teal : palette.muted; ctx.textAlign = 'right'; ctx.font = '10px Roboto Mono, monospace';
         ctx.fillText(`z ${item.z.toFixed(2)}  p ${item.prob.toFixed(2)}`, width - 8, y);
         if (isSpike) { ctx.strokeStyle = palette.coral; ctx.setLineDash([3, 3]); ctx.strokeRect(6.5, y - rowHeight / 2 + 2.5, width - 13, rowHeight - 5); ctx.setLineDash([]); }
+        if (isSelected) {
+          const pulse = 0.5 + 0.5 * Math.sin(now / 420 + index);
+          ctx.fillStyle = `rgba(43,156,148,${0.03 + pulse * 0.035})`;
+          ctx.fillRect(4, y - rowHeight / 2 + 1, width - 8, rowHeight - 2);
+        }
       });
       ctx.fillStyle = palette.muted; ctx.textAlign = 'left'; ctx.font = '10px Roboto Mono, monospace'; ctx.fillText('Z / 概率', width - 170, 9);
     }
@@ -781,7 +893,7 @@
       $('#surface-point-label').textContent = `cap ${state.cap} · margin ${state.margin.toFixed(1)} · min p ${state.minProbability.toFixed(2)}`;
     }
 
-    function renderReliability() {
+    function renderReliability(updateStats = true, now = performance.now()) {
       const surface = setupCanvas($('#canvas-reliability'));
       if (!surface) return;
       const { ctx, width, height } = surface;
@@ -792,6 +904,11 @@
       const y = value => plot.bottom - value * (plot.bottom - plot.top);
       ctx.strokeStyle = 'rgba(29,29,31,.22)'; ctx.setLineDash([5, 5]);
       ctx.beginPath(); ctx.moveTo(x(0), y(0)); ctx.lineTo(x(1), y(1)); ctx.stroke(); ctx.setLineDash([]);
+      const travel = (now / 2800) % 1;
+      ctx.fillStyle = 'rgba(0,113,227,.18)';
+      ctx.beginPath(); ctx.arc(x(travel), y(travel), 8, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = palette.blue;
+      ctx.beginPath(); ctx.arc(x(travel), y(travel), 3, 0, Math.PI * 2); ctx.fill();
       const barWidth = (plot.right - plot.left) / reliability.bins.length * 0.62;
       reliability.bins.forEach(bin => {
         if (!bin.count) return;
@@ -804,7 +921,7 @@
       });
       ctx.fillStyle = palette.muted; ctx.font = '10px Roboto Mono, monospace'; ctx.textAlign = 'left'; ctx.fillText('置信度', plot.left, height - 8);
       ctx.textAlign = 'right'; ctx.fillText('准确率', plot.right, height - 8);
-      statCards($('#calib-stats'), [
+      if (updateStats) statCards($('#calib-stats'), [
         { label: 'ECE', value: fmt(reliability.ece, 4), accent: reliability.ece < 0.05 ? 'teal' : 'coral' },
         { label: 'Brier', value: fmt(reliability.brier, 4), accent: reliability.brier < 0.1 ? 'teal' : 'amber' },
         { label: '先验修正', value: state.priorFix ? '已启用' : '未启用', accent: state.priorFix ? 'teal' : 'coral' },
@@ -820,7 +937,7 @@
       return best;
     }
 
-    function renderSurface() {
+    function renderSurface(now = performance.now()) {
       const surface = setupCanvas($('#canvas-surface'));
       if (!surface) return;
       const { ctx, width, height } = surface;
@@ -836,28 +953,52 @@
       ctx.strokeStyle = palette.blue; ctx.lineWidth = 1.5;
       ctx.beginPath(); ctx.arc(x(point.far), y(point.f1), 6, 0, Math.PI * 2); ctx.stroke();
       ctx.fillStyle = palette.blue; ctx.beginPath(); ctx.arc(x(point.far), y(point.f1), 3.2, 0, Math.PI * 2); ctx.fill();
+      const ring = 8 + 5 * (0.5 + 0.5 * Math.sin(now / 520));
+      ctx.strokeStyle = 'rgba(0,113,227,.16)';
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(x(point.far), y(point.f1), ring, 0, Math.PI * 2); ctx.stroke();
       ctx.fillStyle = palette.muted; ctx.font = '10px Roboto Mono, monospace'; ctx.textAlign = 'left'; ctx.fillText('FAR →', plot.left, height - 7);
       ctx.save(); ctx.translate(12, (plot.top + plot.bottom) / 2); ctx.rotate(-Math.PI / 2); ctx.textAlign = 'center'; ctx.fillText('F1 ↑', 0, 0); ctx.restore();
     }
 
     $('#utt-preset-group')?.addEventListener('click', event => {
+      state.manualUntil = performance.now() + 12000;
       const button = event.target.closest('[data-utt]');
       if (!button) return;
       state.utteranceId = button.dataset.utt; state.spike = 0; $('#slider-spike').value = '0'; renderDecoder();
     });
     $('#norm-method-group')?.addEventListener('click', event => {
+      state.manualUntil = performance.now() + 12000;
       const button = event.target.closest('[data-norm]');
       if (!button) return;
       state.normalization = button.dataset.norm; renderDecoder();
     });
-    $('#slider-spike')?.addEventListener('input', event => { state.spike = Number(event.target.value); renderDecoder(); });
-    $('#slider-cap')?.addEventListener('input', event => { state.cap = Number(event.target.value); renderDecoder(); });
-    $('#slider-margin')?.addEventListener('input', event => { state.margin = Number(event.target.value); renderDecoder(); });
-    $('#slider-minp')?.addEventListener('input', event => { state.minProbability = Number(event.target.value); renderDecoder(); });
+    $('#slider-spike')?.addEventListener('input', event => { state.manualUntil = performance.now() + 12000; state.spike = Number(event.target.value); renderDecoder(); });
+    $('#slider-cap')?.addEventListener('input', event => { state.manualUntil = performance.now() + 12000; state.cap = Number(event.target.value); renderDecoder(); });
+    $('#slider-margin')?.addEventListener('input', event => { state.manualUntil = performance.now() + 12000; state.margin = Number(event.target.value); renderDecoder(); });
+    $('#slider-minp')?.addEventListener('input', event => { state.manualUntil = performance.now() + 12000; state.minProbability = Number(event.target.value); renderDecoder(); });
     $('#toggle-prior-fix')?.addEventListener('change', event => {
+      state.manualUntil = performance.now() + 12000;
       state.priorFix = event.target.checked;
       $('#chip-prior-fix')?.classList.toggle('is-on', state.priorFix);
       renderDecoder();
+    });
+    registerAmbientDrawer('decoder', (now) => {
+      const autoAllowed = now > state.manualUntil;
+      if (autoAllowed) {
+        state.spike = 0.38 + 0.86 * (0.5 + 0.5 * Math.sin(now / 1450));
+        $('#slider-spike').value = state.spike.toFixed(2);
+      }
+      const model = computeItems();
+      const grow = 0.965 + 0.035 * Math.sin(now / 380);
+      renderDecoderCanvas(model, grow, now);
+      renderReliability(false, now);
+      renderSurface(now);
+      if (autoAllowed && now - state.lastAmbientUi > 260) {
+        state.lastAmbientUi = now;
+        updateSliderLabels();
+        renderDecoder();
+      }
     });
     window.addEventListener('resize', () => { if (app.decoder) renderDecoder(); });
     renderDecoder();
@@ -868,7 +1009,7 @@
   // ---------------------------------------------------------------------------
   function initEvaluation(bundle) {
     const data = bundle.eval_lie_detector;
-    const state = { predicted: data.timeline.predicted_spans.map(span => ({ ...span })), dragId: null, dragOffset: 0, dragDuration: 0, freqPreset: 'head_biased' };
+    const state = { predicted: data.timeline.predicted_spans.map(span => ({ ...span })), dragId: null, dragOffset: 0, dragDuration: 0, freqPreset: 'head_biased', manualUntil: 0, lastAmbientUi: 0 };
     app.eval = state;
     const canvas = $('#canvas-hungarian');
     const duration = data.timeline.duration;
@@ -944,6 +1085,7 @@
         return `<button class="span-pill" data-span-id="${span.id}" type="button"><strong>${span.phrase}</strong><span class="span-pill__tag ${tagClass}">${span.char_source}</span></button>`;
       }).join('');
       $$('.span-pill', host).forEach(button => button.addEventListener('click', () => {
+        state.manualUntil = performance.now() + 12000;
         const span = state.predicted.find(item => item.id === button.dataset.spanId);
         if (!span) return;
         const cycle = ['reading', 'text-fallback', 'no-position'];
@@ -958,7 +1100,7 @@
       }));
     }
 
-    function renderHungarian() {
+    function renderHungarian(updateDom = true) {
       const surface = setupCanvas(canvas);
       if (!surface) return;
       const { ctx, width, height } = surface;
@@ -998,7 +1140,17 @@
       });
       ctx.fillStyle = palette.muted; ctx.font = '10px Roboto Mono, monospace'; ctx.textAlign = 'right';
       ctx.fillText(`honest F1 ${metrics.f1.toFixed(2)} · naive F1 ${metrics.naiveF1.toFixed(2)}`, right, 10);
-      renderEvalCards(metrics); renderSpanControls();
+      const scanTime = (performance.now() / 32) % duration;
+      const scanX = x(scanTime);
+      const scan = ctx.createLinearGradient(scanX - 24, 0, scanX + 4, 0);
+      scan.addColorStop(0, 'rgba(0,113,227,0)');
+      scan.addColorStop(1, 'rgba(0,113,227,.10)');
+      ctx.fillStyle = scan;
+      ctx.fillRect(scanX - 24, 18, 28, height - 46);
+      ctx.strokeStyle = 'rgba(0,113,227,.28)';
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(scanX, 18); ctx.lineTo(scanX, height - 28); ctx.stroke();
+      if (updateDom) { renderEvalCards(metrics); renderSpanControls(); }
     }
     function predictedAt(event) {
       const rect = canvas.getBoundingClientRect(), width = rect.width, left = 46, right = width - 20;
@@ -1012,6 +1164,7 @@
       }) || null;
     }
     canvas?.addEventListener('pointerdown', event => {
+      state.manualUntil = performance.now() + 12000;
       const span = predictedAt(event);
       if (!span) return;
       const rect = canvas.getBoundingClientRect(), width = rect.width;
@@ -1037,14 +1190,16 @@
     };
     canvas?.addEventListener('pointerup', finishDrag);
     canvas?.addEventListener('pointercancel', finishDrag);
-    $('#btn-reset-spans')?.addEventListener('click', () => { state.predicted = data.timeline.predicted_spans.map(span => ({ ...span })); renderHungarian(); });
+    $('#btn-reset-spans')?.addEventListener('click', () => {
+      state.manualUntil = performance.now() + 12000; state.predicted = data.timeline.predicted_spans.map(span => ({ ...span })); renderHungarian(); });
     $('#btn-drift-demo')?.addEventListener('click', () => {
+      state.manualUntil = performance.now() + 12000;
       const span = state.predicted.find(item => item.id === 'p1');
       if (span) { span.start = 3.15; span.end = 3.82; }
       renderHungarian();
     });
 
-    function renderFrequency() {
+    function renderFrequency(now = performance.now(), updateStats = true) {
       const preset = data.frequency_presets[state.freqPreset];
       const surface = setupCanvas($('#canvas-freq'));
       if (!surface) return;
@@ -1069,22 +1224,48 @@
       ctx.strokeStyle = palette.violet; ctx.lineWidth = 1.5; ctx.setLineDash([5, 4]);
       ctx.beginPath(); ctx.moveTo(plot.left, y(clamp(slope * minCount + intercept, 0, 1))); ctx.lineTo(plot.right, y(clamp(slope * maxCount + intercept, 0, 1))); ctx.stroke(); ctx.setLineDash([]);
       ctx.fillStyle = palette.muted; ctx.font = '10px Roboto Mono, monospace'; ctx.textAlign = 'left'; ctx.fillText('词频（log）→', plot.left, height - 9);
+      const travel = (now / 3200) % 1;
+      const trackX = plot.left + travel * (plot.right - plot.left);
+      const trackLog = minCount + travel * (maxCount - minCount);
+      const trackY = y(clamp(slope * trackLog + intercept, 0, 1));
+      ctx.fillStyle = 'rgba(123,107,176,.15)';
+      ctx.beginPath(); ctx.arc(trackX, trackY, 8, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = palette.violet;
+      ctx.beginPath(); ctx.arc(trackX, trackY, 3, 0, Math.PI * 2); ctx.fill();
       ctx.textAlign = 'right'; ctx.fillText('单字召回率 ↑', plot.right, 16);
-      statCards($('#freq-stats'), [
+      if (updateStats) statCards($('#freq-stats'), [
         { label: 'Micro recall', value: pct(preset.micro_recall), accent: 'blue' },
         { label: 'Macro recall', value: pct(preset.macro_recall), accent: 'teal' },
         { label: 'Tail recall', value: pct(preset.tail_recall), accent: preset.tail_recall < 0.6 ? 'coral' : 'teal' },
         { label: 'Spearman ρ', value: preset.spearman.toFixed(3), accent: 'amber' },
       ]);
-      $('#freq-callout').innerHTML = state.freqPreset === 'head_biased'
-        ? `Micro ${pct(preset.micro_recall)} 看似接近均衡模型，但长尾词召回只有 <strong>${pct(preset.tail_recall)}</strong>。频率与召回几乎完全正相关，说明模型把大部分能力押在高频词上。`
-        : `Micro ${pct(preset.micro_recall)} 与 Macro ${pct(preset.macro_recall)} 接近，Tail 召回保持 <strong>${pct(preset.tail_recall)}</strong>，长尾方言词不再被平均分遮住。`;
+      if (updateStats) {
+        $('#freq-callout').innerHTML = state.freqPreset === 'head_biased'
+          ? `Micro ${pct(preset.micro_recall)} 看似接近均衡模型，但长尾词召回只有 <strong>${pct(preset.tail_recall)}</strong>。频率与召回几乎完全正相关，说明模型把大部分能力押在高频词上。`
+          : `Micro ${pct(preset.micro_recall)} 与 Macro ${pct(preset.macro_recall)} 接近，Tail 召回保持 <strong>${pct(preset.tail_recall)}</strong>，长尾方言词不再被平均分遮住。`;
+      }
     }
 
     $('#freq-preset-group')?.addEventListener('click', event => {
       const button = event.target.closest('[data-freq]');
       if (!button) return;
       state.freqPreset = button.dataset.freq; renderFrequency();
+    });
+    registerAmbientDrawer('eval', (now) => {
+      if (now > state.manualUntil && !state.dragId) {
+        const p0 = state.predicted.find(span => span.id === 'p0');
+        const p1 = state.predicted.find(span => span.id === 'p1');
+        const p2 = state.predicted.find(span => span.id === 'p2');
+        if (p0) { p0.start = 0.52 + 0.10 * Math.sin(now / 1750); p0.end = p0.start + 0.64; }
+        if (p1) { p1.start = 1.62 + 0.28 * Math.sin(now / 2100); p1.end = p1.start + 0.66; }
+        if (p2) { p2.start = 2.88 + 0.22 * Math.cos(now / 1900); p2.end = p2.start + 0.80; }
+      }
+      renderHungarian(false);
+      renderFrequency(now, false);
+      if (now - state.lastAmbientUi > 280) {
+        state.lastAmbientUi = now;
+        renderEvalCards(computeMetrics());
+      }
     });
     window.addEventListener('resize', () => { renderHungarian(); renderFrequency(); });
     renderHungarian(); renderFrequency();
@@ -1095,7 +1276,7 @@
   // ---------------------------------------------------------------------------
   function initPlan(bundle) {
     const state = {
-      mode: 'v3', injected: false, defaultWords: bundle.manifest_sandbox.default_words,
+      mode: 'v3', injected: false, defaultWords: bundle.manifest_sandbox.default_words, manualUntil: 0, lastAutoCycle: 0,
       confusions: { ...bundle.manifest_sandbox.default_confusions }, backgrounds: [...bundle.manifest_sandbox.default_backgrounds],
     };
     app.plan = state;
@@ -1190,20 +1371,34 @@
     }
 
     $('#plan-mode-group')?.addEventListener('click', event => {
+      state.manualUntil = performance.now() + 12000;
       const button = event.target.closest('[data-pmode]');
       if (!button) return;
       state.mode = button.dataset.pmode; refreshPlan();
     });
-    textarea?.addEventListener('input', refreshPlan);
-    $('#btn-plan-run')?.addEventListener('click', refreshPlan);
-    $('#btn-plan-9')?.addEventListener('click', () => { textarea.value = state.defaultWords.slice(0, 9).join('\n'); refreshPlan(); });
-    $('#btn-plan-10')?.addEventListener('click', () => { textarea.value = state.defaultWords.join('\n'); state.injected = false; refreshPlan(); });
+    textarea?.addEventListener('input', () => { state.manualUntil = performance.now() + 12000; refreshPlan(); });
+    $('#btn-plan-run')?.addEventListener('click', () => { state.manualUntil = performance.now() + 12000; refreshPlan(); });
+    $('#btn-plan-9')?.addEventListener('click', () => { state.manualUntil = performance.now() + 12000; textarea.value = state.defaultWords.slice(0, 9).join('\n'); refreshPlan(); });
+    $('#btn-plan-10')?.addEventListener('click', () => { state.manualUntil = performance.now() + 12000; textarea.value = state.defaultWords.join('\n'); state.injected = false; refreshPlan(); });
     $('#btn-plan-leak')?.addEventListener('click', () => {
+      state.manualUntil = performance.now() + 16000;
       state.injected = true;
       const current = lexicon();
       if (!current.includes('灯')) current.push('灯');
       if (!current.includes('开灯')) current.push('开灯');
       textarea.value = current.join('\n'); refreshPlan();
+    });
+    registerAmbientDrawer('plan', (now) => {
+      if (!state.lastAutoCycle) {
+        state.lastAutoCycle = now;
+        return;
+      }
+      if (now > state.manualUntil && now - state.lastAutoCycle > 6500) {
+        state.mode = state.mode === 'v3' ? 'naive_mod' : 'v3';
+        setActiveSegment('#plan-mode-group', 'pmode', state.mode);
+        state.lastAutoCycle = now;
+        refreshPlan();
+      }
     });
     refreshPlan();
   }
@@ -1215,6 +1410,8 @@
       app.bundle = await response.json();
       initDsp(app.bundle); initDecoder(app.bundle); initEvaluation(app.bundle); initPlan(app.bundle);
       document.body.dataset.ready = 'true';
+      installScrollStory();
+      startAmbientLoop();
     } catch (error) {
       console.error(error);
       const notice = document.createElement('div');

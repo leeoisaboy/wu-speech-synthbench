@@ -6,11 +6,12 @@
   <meta name="theme-color" content="#fbfbfd" />
   <meta name="description" content="SynthBench Studio：低资源方言语音白盒标定与质检台 — 能量谷切字显微镜、先验概率校准仪、匈牙利防刷分测谎仪与泄漏 X 光扫描器。" />
   <title>SynthBench Studio — 方言语音白盒标定与质检台</title>
+  <script>document.documentElement.classList.add("js");</script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400..700&amp;family=Noto+Sans+SC:wght@400..700&amp;family=Roboto+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet" />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%232b9c94'/%3E%3Cpath d='M4 13h3l2-6 3 12 2-6h6' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
-  <link rel="stylesheet" href="static/studio.css?v=v3-20261121" />
+  <link rel="stylesheet" href="static/studio.css?v=cinematic-20261121" />
 </head>
 <body>
   <header class="topbar">
@@ -37,7 +38,7 @@
       <div class="topbar__meta">
         <span class="live-pill">
           <span class="status-dot" aria-hidden="true"></span>
-          <span>v3 纯 NumPy 标定台</span>
+          <span>v3 · 自动演示中</span>
         </span>
         <a class="compact-button" href="https://github.com/leeoisaboy/wu-speech-synthbench" target="_blank" rel="noopener">GitHub ↗</a>
       </div>
@@ -45,7 +46,7 @@
   </header>
 
   <main class="story">
-    <section class="hero" aria-labelledby="hero-title">
+    <section class="hero hero--story" data-reveal="hero" aria-labelledby="hero-title">
       <div class="hero__center">
         <p class="eyebrow">WU-SPEECH-SYNTHBENCH V3 · QA &amp; CALIBRATION STUDIO</p>
         <h1 id="hero-title">拒绝虚高指标，<br /><span>把五个隐藏工程坑摆上台面。</span></h1>
@@ -78,15 +79,21 @@
             <span class="kpi-item__label">硬负样本 + 背景 + 子串三重泄漏审计</span>
           </div>
         </div>
+        <div class="scroll-cue" aria-hidden="true">
+          <span>向下滚动 · 自动演示</span>
+          <svg viewBox="0 0 16 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M8 2v18M3.5 15.5 8 20l4.5-4.5"/></svg>
+        </div>
       </div>
     </section>
 
     <!-- MODULE 1: ENERGY VALLEY DSP -->
-    <section id="sec-dsp" class="module">
+    <section id="sec-dsp" class="module showcase" data-reveal="dsp">
       <div class="module__head">
-        <div>
+        <div class="module__title-group">
           <p class="module__kicker">01 · AUTO_TIMESTAMP / ENERGY_VALLEY.PY</p>
           <h2 class="module__title">信号级「能量谷」切字显微镜</h2>
+        </div>
+        <div class="module__side">
           <p class="module__desc">
             浏览器端纯 JS 1:1 运行零相位 FFT 带通（<code>300–3400 Hz</code>）、Hann 窗、Parseval 高频子带（<code>2000–4000 Hz</code>）与谱通量。支持内置样例、拖入本地 <code>.wav</code> 文件或麦克风现场录音试切。
           </p>
@@ -140,7 +147,7 @@
                 <span class="legend__item"><span class="dot" style="background:var(--coral)"></span>字间落刀线</span>
               </span>
             </div>
-            <canvas id="canvas-wave" class="stage" height="145" style="cursor:ew-resize;"></canvas>
+            <canvas id="canvas-wave" class="stage" height="220" style="cursor:ew-resize;"></canvas>
           </div>
 
           <div class="track-box">
@@ -152,7 +159,7 @@
                 <span class="legend__item"><span class="dot" style="background:var(--teal)"></span>融合包络 fused_db</span>
               </span>
             </div>
-            <canvas id="canvas-bands" class="stage" height="145"></canvas>
+            <canvas id="canvas-bands" class="stage" height="220"></canvas>
           </div>
 
           <div class="track-box">
@@ -164,7 +171,7 @@
                 <span class="legend__item"><span class="dot" style="background:var(--coral)"></span>argmin 激光落刀点</span>
               </span>
             </div>
-            <canvas id="canvas-valley" class="stage" height="140"></canvas>
+            <canvas id="canvas-valley" class="stage" height="190"></canvas>
           </div>
         </div>
 
@@ -174,11 +181,13 @@
     </section>
 
     <!-- MODULE 2: SET DECODER & CALIBRATION -->
-    <section id="sec-calib" class="module">
+    <section id="sec-calib" class="module showcase" data-reveal="decoder">
       <div class="module__head">
-        <div>
+        <div class="module__title-group">
           <p class="module__kicker">02 · SET_PREDICTION / MULTI_KW_DECODER.PY &amp; SCORE_VECTOR_BASELINE.PY</p>
           <h2 class="module__title">多词集合解码器 × 先验概率校准仪</h2>
+        </div>
+        <div class="module__side">
           <p class="module__desc">
             左侧用真实候选分数演示 <code>Robust Median-MAD</code> 抗异常尖峰与 v3 <code>continue</code> 防误杀机制；右侧用 <code>LogisticCalibrator</code> 10-bin 可靠性曲线直观展示先验对数几率修正如何把虚高概率拉回 <code>y = x</code>。
           </p>
@@ -199,7 +208,7 @@
             </div>
           </div>
 
-          <canvas id="canvas-decoder" class="stage" height="240"></canvas>
+          <canvas id="canvas-decoder" class="stage" height="330"></canvas>
 
           <div class="slider-grid">
             <div class="slider-box">
@@ -233,7 +242,7 @@
                 <span>开启 v3 先验修正</span>
               </label>
             </div>
-            <canvas id="canvas-reliability" class="stage" height="225"></canvas>
+            <canvas id="canvas-reliability" class="stage" height="300"></canvas>
             <div class="stat-row" id="calib-stats" style="margin-top:8px;"></div>
           </div>
 
@@ -242,18 +251,20 @@
               <strong style="font-size:14px;">F1 vs 误报率（FAR）工作面</strong>
               <span class="mono" style="font-size:12px; color:var(--muted);" id="surface-point-label"></span>
             </div>
-            <canvas id="canvas-surface" class="stage" height="170"></canvas>
+            <canvas id="canvas-surface" class="stage" height="220"></canvas>
           </div>
         </div>
       </div>
     </section>
 
     <!-- MODULE 3: HUNGARIAN LIE DETECTOR & FREQUENCY BIAS -->
-    <section id="sec-eval" class="module">
+    <section id="sec-eval" class="module showcase" data-reveal="eval">
       <div class="module__head">
-        <div>
+        <div class="module__title-group">
           <p class="module__kicker">03 · EVAL_METRICS / LOCALISATION.PY &amp; RANKING.PY</p>
           <h2 class="module__title">评测「测谎仪」：匈牙利多区间匹配 × 防刷分透视镜</h2>
+        </div>
+        <div class="module__side">
           <p class="module__desc">
             拖走任意预测框让 <code>IoU</code> 跌到 <code>0.0</code>，或点击预测标签切换 <code>reading / text-fallback / no-position</code>，亲眼观察「天真指标」如何通过忽略脱靶同词与无位误报粉饰太平，以及 v3 诚实指标如何一针见血。
           </p>
@@ -272,7 +283,7 @@
           </div>
         </div>
 
-        <canvas id="canvas-hungarian" class="stage" height="235" style="cursor:grab;"></canvas>
+        <canvas id="canvas-hungarian" class="stage" height="360" style="cursor:grab;"></canvas>
         <div class="span-controls" id="span-controls"></div>
 
         <div class="compare-grid" id="eval-compare-grid"></div>
@@ -290,7 +301,7 @@
           </div>
         </div>
         <div class="grid-asymmetric" style="align-items:center;">
-          <canvas id="canvas-freq" class="stage" height="255"></canvas>
+          <canvas id="canvas-freq" class="stage" height="340"></canvas>
           <div>
             <div class="stat-row" id="freq-stats" style="grid-template-columns: repeat(2, minmax(0,1fr)); margin-top:0;"></div>
             <div class="callout callout--coral" id="freq-callout" style="margin-top:12px;"></div>
@@ -300,11 +311,13 @@
     </section>
 
     <!-- MODULE 4: MANIFEST SANDBOX & LEAKAGE X-RAY -->
-    <section id="sec-plan" class="module">
+    <section id="sec-plan" class="module showcase" data-reveal="plan">
       <div class="module__head">
-        <div>
+        <div class="module__title-group">
           <p class="module__kicker">04 · SYNTH_PIPELINE / MANIFEST.PY</p>
           <h2 class="module__title">语料规划沙盘：三位置平衡棋盘 × 泄漏 X 光扫描器</h2>
+        </div>
+        <div class="module__side">
           <p class="module__desc">
             修改下方方言热词表实时生成合成规划：左边直观对比 <code>len(lexicon) % 3 == 0</code> 时的传统取模对角线死锁与 v3 均匀覆盖；右边点击「一键注入隐患」即可触发 <code>validate_plan</code> 红灯警报。
           </p>
@@ -366,6 +379,6 @@
     </footer>
   </main>
 
-  <script src="static/studio.js?v=v3-20261121"></script>
+  <script src="static/studio.js?v=cinematic-20261121"></script>
 </body>
 </html>

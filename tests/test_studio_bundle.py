@@ -34,6 +34,10 @@ class StudioBundleTests(unittest.TestCase):
         self.assertIn("buildRecords", source)
         self.assertNotIn("fetch('/api", source)
         self.assertNotIn("XMLHttpRequest", source)
+        self.assertIn("IntersectionObserver", source)
+        self.assertIn("registerAmbientDrawer", source)
+        css = (ROOT / "studio" / "static" / "studio.css").read_text(encoding="utf-8")
+        self.assertIn("borderless", css.lower())
 
 
 if __name__ == "__main__":
