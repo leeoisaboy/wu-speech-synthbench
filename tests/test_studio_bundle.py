@@ -36,6 +36,8 @@ class StudioBundleTests(unittest.TestCase):
         self.assertNotIn("XMLHttpRequest", source)
         self.assertIn("IntersectionObserver", source)
         self.assertIn("registerAmbientDrawer", source)
+        self.assertIn("drawContractFrame", source)
+        self.assertIn("canvas-contract", (ROOT / "studio" / "index.html").read_text(encoding="utf-8"))
         css = (ROOT / "studio" / "static" / "studio.css").read_text(encoding="utf-8")
         self.assertIn("borderless", css.lower())
 

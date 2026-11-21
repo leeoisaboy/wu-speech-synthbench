@@ -17,7 +17,6 @@
 
 <p align="center"><strong>把零资源方言合成语料的规划、切字、校准与评测拆成可以逐项检查的白盒流程。</strong></p>
 
-<img align="right" width="190" src="docs/assets/logo.png" alt="Wu-Speech-SynthBench 小狗 Logo" />
 
 ## 正在运行的界面
 
@@ -195,12 +194,14 @@ python -m http.server 8765 --directory studio
 Studio 支持以下交互：
 
 - 拖拽 WAV 或录制 2 秒麦克风音频，实时检查切字边界。
+- 切字样例、解码场景和词频预设会按节奏自动轮播。
 - 切换全局归一化与 v3 词内局部归一化。
 - 切换未对齐后验与帧中心重采样。
 - 调整候选尖峰、`cap`、`margin` 和 `min_probability`。
 - 关闭或开启先验修正，观察 ECE、Brier 与可靠性曲线变化。
 - 拖走预测区间或切换 `no-position`，比较天真指标与 v3 诚实指标。
 - 修改词表，观察三位置覆盖和泄漏扫描结果。
+- `validate_plan` 用绿色和红色路径显示每条记录是否把已注册词带进负样本。
 
 ## 仓库结构
 

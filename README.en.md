@@ -17,7 +17,6 @@
 
 <p align="center"><strong>A white-box workflow for planning synthetic dialect corpora, timestamping speech, calibrating predictions, and evaluating retrieval honestly.</strong></p>
 
-<img align="right" width="190" src="docs/assets/logo.png" alt="Wu-Speech-SynthBench dog mascot logo" />
 
 ## Running interface
 
@@ -192,7 +191,7 @@ python -m http.server 8765 --directory studio
 
 Then visit `http://127.0.0.1:8765`.
 
-The page supports WAV drop and microphone recording, local versus global normalisation, acoustic versus frame-centre posterior alignment, decoder thresholds, prior correction, span dragging, source switching, and live corpus-plan audits.
+The page supports WAV drop and microphone recording, periodic option playback, local versus global normalisation, acoustic versus frame-centre posterior alignment, decoder thresholds, prior correction, span dragging, source switching, and live corpus-plan audits. The `validate_plan` path scanner uses green and red routes to show whether any negative record has admitted an enrolled phrase.
 
 ## Repository layout
 

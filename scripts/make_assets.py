@@ -1,4 +1,4 @@
-"""Render README title banners, WSB dog mascot logo, and pipeline diagrams with Pillow."""
+"""Render README title banners and pipeline diagrams with Pillow."""
 
 from __future__ import annotations
 
@@ -177,27 +177,6 @@ def title_banner(language: str) -> None:
     canvas.convert("RGB").save(ASSETS / f"title_banner.{language}.png", optimize=True)
 
 
-def logo() -> None:
-    size = 512
-    canvas = Image.new("RGBA", (size, size), (0, 0, 0, 0))
-    shadow_card(canvas, (12, 12, 500, 500), radius=112, fill=(252, 253, 255, 255), shadow=10)
-    draw = ImageDraw.Draw(canvas)
-    draw.ellipse((38, 132, 260, 354), fill=(*TEAL, 24))
-    draw.ellipse((45, 139, 253, 347), outline=(*BLUE, 80), width=3)
-
-    dog = mascot_layer(178)
-    canvas.alpha_composite(dog, (52, 150))
-
-    gradient_text(canvas, (254, 132), "WSB", font(FONT_TITLE, 114), GRADIENT)
-    draw.text((260, 268), "SYNTHBENCH", font=font(FONT_UI, 22), fill=BLUE)
-    draw.text((260, 300), "QA STUDIO", font=font(FONT_UI, 22), fill=TEAL)
-    draw.text((260, 365), "PURE NUMPY V3", font=font(FONT_UI, 16), fill=MUTED)
-    draw.ellipse((260, 401, 273, 414), fill=BLUE)
-    draw.ellipse((290, 401, 303, 414), fill=TEAL)
-    draw.ellipse((320, 401, 333, 414), fill=AMBER)
-
-    canvas.save(ASSETS / "logo.png", optimize=True)
-
 
 def pipeline(language: str) -> None:
     width, height = 1600, 900
@@ -281,7 +260,6 @@ if __name__ == "__main__":
     ASSETS.mkdir(parents=True, exist_ok=True)
     title_banner("zh")
     title_banner("en")
-    logo()
     pipeline("zh")
     pipeline("en")
     print("assets written to", ASSETS)

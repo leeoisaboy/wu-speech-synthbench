@@ -387,7 +387,7 @@
       presetId: 'shaoshui', characters: '烧水', anchors: [0.33, 0.64], posteriors: null,
       posteriorHop: 0.02, audioBuffer: null, signal: null, sampleRate: 8000, decoded: null,
       localNorm: true, frameCenter: true, dragIndex: -1, playStart: 0, playRequest: 0,
-      ambientTime: null, ambientStart: performance.now(), manualUntil: 0,
+      ambientTime: null, ambientStart: performance.now(), ambientClock: performance.now(), manualUntil: 0, lastPresetCycle: 0,
     };
     app.dsp = state;
     const waveCanvas = $('#canvas-wave'), bandsCanvas = $('#canvas-bands'), valleyCanvas = $('#canvas-valley');
@@ -470,7 +470,8 @@
         let low = 1, high = -1;
         for (let i = from; i < to; i += 1) { low = Math.min(low, audio[i]); high = Math.max(high, audio[i]); }
         const x = plot.left + column;
-        ctx.moveTo(x, center - high * amplitude); ctx.lineTo(x, center - low * amplitude);
+        const ripple = 1 + 0.035 * Math.sin(state.ambientClock / 820 + column / columns * Math.PI * 8);
+        ctx.moveTo(x, center - high * ripple * amplitude); ctx.lineTo(x, center - low * ripple * amplitude);
       }
       ctx.stroke();
       const wordStart = frameToTime(decoded.left, decoded.features.hopSeconds, decoded.halfWindow, duration);
@@ -533,7 +534,11 @@
       const x = frame => plot.left + frame / Math.max(1, energyDb.length - 1) * (plot.right - plot.left);
       const drawSeries = (values, stroke, fill, widthValue = 1.7, dashed = false) => {
         ctx.beginPath();
-        values.forEach((value, index) => { const px = x(index), py = y(value); if (index === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py); });
+        values.forEach((value, index) => {
+          const wiggle = Math.sin(state.ambientClock / 690 + index / Math.max(values.length - 1, 1) * Math.PI * 5) * 0.42;
+          const px = x(index), py = y(value + wiggle);
+          if (index === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+        });
         if (fill) { ctx.lineTo(plot.right, plot.bottom); ctx.lineTo(plot.left, plot.bottom); ctx.closePath(); ctx.fillStyle = fill; ctx.fill(); }
         ctx.strokeStyle = stroke; ctx.lineWidth = widthValue; ctx.setLineDash(dashed ? [5, 4] : []); ctx.stroke(); ctx.setLineDash([]);
       };
@@ -570,7 +575,11 @@
         values.push({ frame, value });
       }
       const low = Math.min(...values.map(item => item.value)), high = Math.max(...values.map(item => item.value));
-      const normalized = values.map(item => ({ ...item, value: high - low < 1e-12 ? 0.5 : (item.value - low) / (high - low) }));
+      const normalized = values.map((item, index) => ({
+        ...item,
+        value: (high - low < 1e-12 ? 0.5 : (item.value - low) / (high - low))
+          + Math.sin(state.ambientClock / 760 + index * 0.19) * 0.012,
+      }));
       const x = frame => plot.left + frame / Math.max(1, decoded.features.count - 1) * (plot.right - plot.left);
       const y = value => plot.bottom - value * (plot.bottom - plot.top) * 0.88 - 2;
       ctx.beginPath();
@@ -620,16 +629,19 @@
       $('#dsp-callout').innerHTML = `${spanText}<br><span style="opacity:.78">后验对齐：${state.frameCenter ? '帧中心 frame × hop + half_window' : '未对齐 frame × hop'}；局部归一化让 −120 dB 静音不再压低词内能量谷。</span>`;
     }
     $('#dsp-preset-group')?.addEventListener('click', event => {
+      state.manualUntil = performance.now() + 12000;
       const button = event.target.closest('[data-preset]');
       if (button) loadPreset(button.dataset.preset);
     });
-    charsInput?.addEventListener('input', () => refreshDsp());
+    charsInput?.addEventListener('input', () => { state.manualUntil = performance.now() + 12000; refreshDsp(); });
     toggleLocal?.addEventListener('change', () => {
+      state.manualUntil = performance.now() + 12000;
       state.localNorm = toggleLocal.checked;
       chipLocal?.classList.toggle('is-on', state.localNorm);
       refreshDsp();
     });
     toggleCenter?.addEventListener('change', () => {
+      state.manualUntil = performance.now() + 12000;
       state.frameCenter = toggleCenter.checked;
       chipCenter?.classList.toggle('is-on', state.frameCenter);
       refreshDsp();
@@ -646,6 +658,7 @@
         if (current < distance) { distance = current; nearest = index; }
       });
       if (distance < 0.08) {
+        state.manualUntil = performance.now() + 12000;
         state.dragIndex = nearest;
         waveCanvas.setPointerCapture(event.pointerId);
       }
@@ -673,6 +686,7 @@
     waveCanvas?.addEventListener('pointercancel', endDrag);
 
     async function loadAudioFile(file) {
+      state.manualUntil = performance.now() + 12000;
       const ctx = new AudioContext();
       try {
         const buffer = await ctx.decodeAudioData(await file.arrayBuffer());
@@ -709,6 +723,7 @@
 
     async function playAudio() {
       if (!state.signal) return;
+      state.manualUntil = performance.now() + 12000;
       const ctx = new AudioContext();
       if (!state.audioBuffer) {
         state.audioBuffer = ctx.createBuffer(1, state.signal.length, state.sampleRate);
@@ -761,8 +776,15 @@
 
     registerAmbientDrawer('dsp', now => {
       if (!state.decoded) return;
+      state.ambientClock = now;
       const duration = state.decoded.features.duration;
       state.ambientTime = ((now - state.ambientStart) / 1000) % duration;
+      if (!state.lastPresetCycle) state.lastPresetCycle = now;
+      if (now > state.manualUntil && now - state.lastPresetCycle > 5600) {
+        const current = bundle.dsp_presets.findIndex(item => item.id === state.presetId);
+        loadPreset(bundle.dsp_presets[(current + 1) % bundle.dsp_presets.length].id);
+        state.lastPresetCycle = now;
+      }
       drawDspCharts();
     });
     window.addEventListener('resize', () => { if (app.dsp?.decoded) renderDsp(); });
@@ -774,7 +796,7 @@
   // ---------------------------------------------------------------------------
   function initDecoder(bundle) {
     const data = bundle.calibration_decoder;
-    const state = { utteranceId: 'multi_phrase', normalization: 'robust', spike: 0, cap: 2, margin: 1.5, minProbability: 0.45, priorFix: true, manualUntil: 0, lastAmbientUi: 0 };
+    const state = { utteranceId: 'multi_phrase', normalization: 'robust', spike: 0, cap: 2, margin: 1.5, minProbability: 0.45, priorFix: true, manualUntil: 0, lastAmbientUi: 0, lastOptionCycle: 0 };
     app.decoder = state;
 
     function normalizeScores(scores, method) {
@@ -913,11 +935,14 @@
       reliability.bins.forEach(bin => {
         if (!bin.count) return;
         const bx = x(bin.center) - barWidth / 2;
-        const top = y(Math.max(bin.avg_conf, bin.avg_acc));
+        const livingOffset = Math.sin(now / 560 + bin.center * 7) * 0.007;
+        const confValue = clamp(bin.avg_conf + livingOffset, 0, 1);
+        const accValue = clamp(bin.avg_acc + livingOffset, 0, 1);
+        const top = y(Math.max(confValue, accValue));
         ctx.fillStyle = 'rgba(0,113,227,.13)';
-        ctx.fillRect(bx, top, barWidth, Math.abs(y(bin.avg_conf) - y(bin.avg_acc)));
-        ctx.fillStyle = palette.blue; ctx.fillRect(bx, y(bin.avg_conf) - 2, barWidth, 4);
-        ctx.fillStyle = palette.teal; ctx.beginPath(); ctx.arc(x(bin.center), y(bin.avg_acc), 3.5, 0, Math.PI * 2); ctx.fill();
+        ctx.fillRect(bx, top, barWidth, Math.abs(y(confValue) - y(accValue)));
+        ctx.fillStyle = palette.blue; ctx.fillRect(bx, y(confValue) - 2, barWidth, 4);
+        ctx.fillStyle = palette.teal; ctx.beginPath(); ctx.arc(x(bin.center), y(accValue), 3.5, 0, Math.PI * 2); ctx.fill();
       });
       ctx.fillStyle = palette.muted; ctx.font = '10px Roboto Mono, monospace'; ctx.textAlign = 'left'; ctx.fillText('置信度', plot.left, height - 8);
       ctx.textAlign = 'right'; ctx.fillText('准确率', plot.right, height - 8);
@@ -986,6 +1011,16 @@
     registerAmbientDrawer('decoder', (now) => {
       const autoAllowed = now > state.manualUntil;
       if (autoAllowed) {
+        if (!state.lastOptionCycle) state.lastOptionCycle = now;
+        if (now - state.lastOptionCycle > 6100) {
+          const current = data.utterances.findIndex(item => item.id === state.utteranceId);
+          state.utteranceId = data.utterances[(current + 1) % data.utterances.length].id;
+          state.normalization = state.normalization === 'robust' ? 'zscore' : 'robust';
+          setActiveSegment('#utt-preset-group', 'utt', state.utteranceId);
+          setActiveSegment('#norm-method-group', 'norm', state.normalization);
+          state.lastOptionCycle = now;
+          renderDecoder();
+        }
         state.spike = 0.38 + 0.86 * (0.5 + 0.5 * Math.sin(now / 1450));
         $('#slider-spike').value = state.spike.toFixed(2);
       }
@@ -1009,7 +1044,7 @@
   // ---------------------------------------------------------------------------
   function initEvaluation(bundle) {
     const data = bundle.eval_lie_detector;
-    const state = { predicted: data.timeline.predicted_spans.map(span => ({ ...span })), dragId: null, dragOffset: 0, dragDuration: 0, freqPreset: 'head_biased', manualUntil: 0, lastAmbientUi: 0 };
+    const state = { predicted: data.timeline.predicted_spans.map(span => ({ ...span })), dragId: null, dragOffset: 0, dragDuration: 0, freqPreset: 'head_biased', manualUntil: 0, lastAmbientUi: 0, lastFreqCycle: 0 };
     app.eval = state;
     const canvas = $('#canvas-hungarian');
     const duration = data.timeline.duration;
@@ -1212,8 +1247,9 @@
       const y = value => plot.bottom - value * (plot.bottom - plot.top);
       const classColors = { head: palette.blue, body: palette.teal, tail: palette.coral };
       const fillColors = { head: 'rgba(0,113,227,.12)', body: 'rgba(43,156,148,.12)', tail: 'rgba(230,106,78,.12)' };
-      preset.points.forEach(point => {
-        const cx = x(point.count), cy = y(point.recall);
+      preset.points.forEach((point, index) => {
+        const cx = x(point.count);
+        const cy = y(clamp(point.recall + Math.sin(now / 620 + index * 0.8) * 0.012, 0, 1));
         ctx.fillStyle = fillColors[point.freq_class] || 'rgba(123,107,176,.12)'; ctx.beginPath(); ctx.arc(cx, cy, 7, 0, Math.PI * 2); ctx.fill();
         ctx.strokeStyle = classColors[point.freq_class] || palette.violet; ctx.lineWidth = 1.5; ctx.stroke();
         ctx.fillStyle = palette.muted; ctx.font = '9px Noto Sans SC, sans-serif'; ctx.textAlign = 'center'; ctx.fillText(point.word, cx, cy - 11);
@@ -1247,12 +1283,20 @@
     }
 
     $('#freq-preset-group')?.addEventListener('click', event => {
+      state.manualUntil = performance.now() + 12000;
       const button = event.target.closest('[data-freq]');
       if (!button) return;
       state.freqPreset = button.dataset.freq; renderFrequency();
     });
     registerAmbientDrawer('eval', (now) => {
       if (now > state.manualUntil && !state.dragId) {
+        if (!state.lastFreqCycle) state.lastFreqCycle = now;
+        if (now - state.lastFreqCycle > 4700) {
+          state.freqPreset = state.freqPreset === 'head_biased' ? 'balanced' : 'head_biased';
+          setActiveSegment('#freq-preset-group', 'freq', state.freqPreset);
+          state.lastFreqCycle = now;
+          renderFrequency(now);
+        }
         const p0 = state.predicted.find(span => span.id === 'p0');
         const p1 = state.predicted.find(span => span.id === 'p1');
         const p2 = state.predicted.find(span => span.id === 'p2');
@@ -1276,7 +1320,7 @@
   // ---------------------------------------------------------------------------
   function initPlan(bundle) {
     const state = {
-      mode: 'v3', injected: false, defaultWords: bundle.manifest_sandbox.default_words, manualUntil: 0, lastAutoCycle: 0,
+      mode: 'v3', injected: false, defaultWords: bundle.manifest_sandbox.default_words, manualUntil: 0, lastAutoCycle: 0, contract: null,
       confusions: { ...bundle.manifest_sandbox.default_confusions }, backgrounds: [...bundle.manifest_sandbox.default_backgrounds],
     };
     app.plan = state;
@@ -1363,11 +1407,102 @@
       $('#xray-report').innerHTML = `<div class="xray-status ${pass ? 'xray-status--pass' : 'xray-status--fail'}"><span>${pass ? '绿灯 · DATA_CONTRACT 通过' : '红灯 · 发现数据契约隐患'}</span><span class="mono">${alerts} alert${alerts === 1 ? '' : 's'}</span></div><div class="xray-list">${items.join('')}</div>`;
     }
 
+    function drawContractFrame(now = performance.now()) {
+      if (!state.contract) return;
+      const surface = setupCanvas($('#canvas-contract'));
+      if (!surface) return;
+      const { ctx, width, height } = surface;
+      const { records, analysis } = state.contract;
+      const counts = records.reduce((accumulator, record) => {
+        accumulator[record.subset] = (accumulator[record.subset] || 0) + 1;
+        return accumulator;
+      }, {});
+      const rows = [
+        { label: '正向记录', count: counts.positive || 0, note: '目标词必须出现', leaks: 0, color: palette.teal },
+        { label: '硬负样本', count: counts['hard-negative'] || 0, note: '期望目标集合为空', leaks: analysis.hardNegativeLeakages.length, color: palette.amber },
+        { label: '背景语料', count: counts.background || 0, note: '不得包含注册词', leaks: analysis.backgroundLeakages.length, color: palette.violet },
+      ];
+      const left = Math.max(24, width * 0.04);
+      const leftWidth = Math.min(190, width * 0.24);
+      const center = width * 0.54;
+      const right = width - Math.max(26, width * 0.04);
+      const statusWidth = Math.min(180, width * 0.25);
+      const top = 56;
+      const rowGap = 66;
+      ctx.font = '10px Roboto Mono, monospace';
+      ctx.textAlign = 'left'; ctx.fillStyle = palette.muted;
+      ctx.fillText('合成记录', left, 24);
+      ctx.textAlign = 'center'; ctx.fillText('validate_plan', center, 24);
+      ctx.textAlign = 'right'; ctx.fillText('契约结果', right, 24);
+
+      rows.forEach((row, index) => {
+        const y = top + index * rowGap;
+        const failed = row.leaks > 0;
+        const stateColor = failed ? palette.coral : row.color;
+        roundedRect(ctx, left, y - 18, leftWidth, 38, 10);
+        ctx.fillStyle = failed ? 'rgba(230,106,78,.09)' : 'rgba(29,29,31,.035)';
+        ctx.fill();
+        ctx.fillStyle = palette.ink; ctx.font = '600 11px Noto Sans SC, sans-serif'; ctx.textAlign = 'left';
+        ctx.fillText(`${row.label}  ${row.count}`, left + 12, y - 2);
+        ctx.fillStyle = palette.muted; ctx.font = '9px Roboto Mono, monospace';
+        ctx.fillText(row.note, left + 12, y + 13);
+
+        const lineStart = left + leftWidth + 18;
+        const lineEnd = right - statusWidth - 22;
+        const lineGradient = ctx.createLinearGradient(lineStart, 0, lineEnd, 0);
+        lineGradient.addColorStop(0, failed ? 'rgba(230,106,78,.16)' : 'rgba(43,156,148,.14)');
+        lineGradient.addColorStop(1, failed ? 'rgba(230,106,78,.72)' : 'rgba(43,156,148,.58)');
+        ctx.strokeStyle = lineGradient;
+        ctx.lineWidth = failed ? 2 : 1.5;
+        ctx.setLineDash(failed ? [6, 5] : []);
+        ctx.beginPath(); ctx.moveTo(lineStart, y); ctx.lineTo(lineEnd, y); ctx.stroke();
+        ctx.setLineDash([]);
+        const phase = ((now / (failed ? 640 : 980)) + index * 0.27) % 1;
+        for (let dot = 0; dot < 3; dot += 1) {
+          const travel = (phase + dot / 3) % 1;
+          const px = lineStart + travel * (lineEnd - lineStart);
+          ctx.fillStyle = failed ? `rgba(230,106,78,${0.25 + travel * 0.65})` : `rgba(43,156,148,${0.18 + travel * 0.55})`;
+          ctx.beginPath(); ctx.arc(px, y, failed ? 2.2 : 1.8, 0, Math.PI * 2); ctx.fill();
+        }
+
+        const pulse = 0.5 + 0.5 * Math.sin(now / 480 + index);
+        ctx.strokeStyle = failed ? 'rgba(230,106,78,.22)' : 'rgba(43,156,148,.20)';
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.arc(center, y, 15 + pulse * 5, 0, Math.PI * 2); ctx.stroke();
+        ctx.fillStyle = failed ? palette.coral : palette.teal;
+        ctx.beginPath(); ctx.arc(center, y, 5.5, 0, Math.PI * 2); ctx.fill();
+
+        roundedRect(ctx, right - statusWidth, y - 16, statusWidth, 34, 9);
+        ctx.fillStyle = failed ? 'rgba(230,106,78,.10)' : 'rgba(43,156,148,.08)';
+        ctx.fill();
+        ctx.fillStyle = stateColor; ctx.font = '600 11px Noto Sans SC, sans-serif'; ctx.textAlign = 'center';
+        ctx.fillText(failed ? `泄漏 × ${row.leaks}` : '通过', right - statusWidth / 2, y + 4);
+      });
+
+      const leaks = [
+        ...analysis.hardNegativeLeakages.map(item => ({ ...item, source: '硬负' })),
+        ...analysis.backgroundLeakages.map(item => ({ ...item, source: '背景' })),
+      ];
+      ctx.textAlign = 'left'; ctx.font = '10px Roboto Mono, monospace';
+      if (leaks.length) {
+        ctx.fillStyle = palette.coral;
+        ctx.fillText(`已拦截：${leaks.slice(0, 4).map(item => `${item.source}「${item.phrase}」`).join(' · ')}`, left, height - 16);
+      } else {
+        ctx.fillStyle = palette.teal;
+        ctx.fillText('全部路径通过：负样本没有混入已注册词。', left, height - 16);
+      }
+      ctx.textAlign = 'right'; ctx.fillStyle = palette.muted;
+      ctx.fillText(analysis.conflicts.length ? `另有 ${analysis.conflicts.length} 对子串碰撞` : '扫描中', right, height - 16);
+    }
+
     function refreshPlan() {
       const words = lexicon();
       if (!words.length) { $('#heatmap-container').innerHTML = '<div class="xray-item">请输入至少一个词。</div>'; $('#xray-report').innerHTML = ''; return; }
       const records = buildRecords(words), analysis = analyze(words, records);
-      renderHeatmap(words, analysis); renderXray(words, records, analysis);
+      state.contract = { words, records, analysis };
+      const alerts = analysis.conflicts.length + analysis.hardNegativeLeakages.length + analysis.backgroundLeakages.length;
+      $('#contract-summary').textContent = alerts ? `${alerts} 条路径需要处理` : '全部路径通过';
+      renderHeatmap(words, analysis); renderXray(words, records, analysis); drawContractFrame();
     }
 
     $('#plan-mode-group')?.addEventListener('click', event => {
@@ -1393,12 +1528,13 @@
         state.lastAutoCycle = now;
         return;
       }
-      if (now > state.manualUntil && now - state.lastAutoCycle > 6500) {
+      if (now > state.manualUntil && now - state.lastAutoCycle > 2800) {
         state.mode = state.mode === 'v3' ? 'naive_mod' : 'v3';
         setActiveSegment('#plan-mode-group', 'pmode', state.mode);
         state.lastAutoCycle = now;
         refreshPlan();
       }
+      drawContractFrame(now);
     });
     refreshPlan();
   }

@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400..700&amp;family=Noto+Sans+SC:wght@400..700&amp;family=Roboto+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet" />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%232b9c94'/%3E%3Cpath d='M4 13h3l2-6 3 12 2-6h6' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
-  <link rel="stylesheet" href="static/studio.css?v=cinematic-20261121" />
+  <link rel="stylesheet" href="static/studio.css?v=motion-20261121" />
 </head>
 <body>
   <header class="topbar">
@@ -349,6 +349,17 @@
 扫地
 打开电视</textarea>
 
+        <div class="contract-visual">
+          <div class="contract-visual__head">
+            <div>
+              <strong><code>validate_plan</code> 泄漏路径扫描</strong>
+              <span>绿色路径表示契约通过，红色路径会追踪到具体泄漏词。</span>
+            </div>
+            <span id="contract-summary" class="mono"></span>
+          </div>
+          <canvas id="canvas-contract" class="stage" height="280"></canvas>
+        </div>
+
         <div class="grid-2" style="margin-top:16px;">
           <div>
             <div style="display:flex; justify-content:space-between; align-items:center;">
@@ -359,7 +370,7 @@
           </div>
 
           <div>
-            <strong style="font-size:14.5px; display:block; margin-bottom:10px;"><code>validate_plan</code> 泄漏与契约 X 光体检报告</strong>
+            <strong style="font-size:14.5px; display:block; margin-bottom:10px;">逐条契约报告</strong>
             <div id="xray-report"></div>
           </div>
         </div>
@@ -379,6 +390,6 @@
     </footer>
   </main>
 
-  <script src="static/studio.js?v=cinematic-20261121"></script>
+  <script src="static/studio.js?v=motion-20261121"></script>
 </body>
 </html>

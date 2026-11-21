@@ -942,3 +942,52 @@ canvas.stage { border-radius: 0; background: transparent; }
     flex: 1 1 calc(50% - 6px);
   }
 }
+
+/* Contract-path scanner */
+.contract-visual {
+  width: min(1180px, 100%);
+  margin: 34px auto 30px;
+}
+
+.contract-visual__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 20px;
+  margin-bottom: 12px;
+}
+
+.contract-visual__head strong {
+  display: block;
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.contract-visual__head span {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 11.5px;
+}
+
+#canvas-contract {
+  min-height: 260px;
+}
+
+.hm-zero,
+.hm-ok,
+.hm-high {
+  animation-duration: 1.8s;
+}
+
+.xray-list::after {
+  animation-duration: 2.6s;
+}
+
+@media (max-width: 700px) {
+  .contract-visual__head {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+  }
+}
