@@ -19,6 +19,13 @@
 
 <p align="center"><strong>Zero-resource synthetic dialect corpus planning, signal-level timestamping, probability calibration, and honest evaluation — pure NumPy with a live zero-backend Studio.</strong></p>
 
+
+## Architecture Pipeline
+
+<p align="center">
+  <img src="docs/assets/pipeline_architecture.jpg" alt="Wu-Speech-SynthBench Zero-Resource Dialect Corpus & Evaluation Pipeline" width="1000" />
+</p>
+
 ## Live Interactive Bench: SynthBench Studio
 
 <p align="center">
