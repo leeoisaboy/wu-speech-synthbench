@@ -19,6 +19,13 @@
 
 <p align="center"><strong>面向低资源方言语音的语料规划、自动切字、概率校准与多区间评测工具——全仓纯 NumPy，内置零后端交互演示台。</strong></p>
 
+
+## 方法流程图 · Architecture Pipeline
+
+<p align="center">
+  <img src="docs/assets/pipeline_architecture.jpg" alt="Wu-Speech-SynthBench 零资源方言合成规划与防刷分评测架构流程图" width="1000" />
+</p>
+
 ## 在线交互台：SynthBench Studio
 
 <p align="center">
