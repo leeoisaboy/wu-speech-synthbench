@@ -13,6 +13,7 @@ from .set_prediction import fit_set_calibrator, sweep_set_decisions
 from .synth_pipeline import (
     BenchmarkPlan,
     SynthesisRecord,
+    audit_manifest,
     build_benchmark_plan,
     load_background_phrases,
     load_confusion_pairs,
@@ -193,8 +194,16 @@ def build_parser() -> argparse.ArgumentParser:
     validate = subparsers.add_parser("validate", help="validate a generated JSON Lines plan")
     validate.add_argument("--plan", type=Path, required=True)
     validate.add_argument("--lexicon", type=Path, help="optional lexicon for negative leakage & substring checks")
+    validate.add_argument("--token-mode", choices=("auto", "cjk", "word"), default="auto")
     validate.add_argument("--no-strict-leakage", action="store_true", help="warn instead of raising on negative leakage")
     validate.add_argument("--output", type=Path, help="optional path to write JSON validation report")
+
+    audit = subparsers.add_parser("audit", help="audit any real or synthetic KWS/ASR JSONL manifest for leakage & conflicts")
+    audit.add_argument("--manifest", type=Path, required=True)
+    audit.add_argument("--lexicon", type=Path, help="optional lexicon CSV/JSONL")
+    audit.add_argument("--token-mode", choices=("auto", "cjk", "word"), default="auto")
+    audit.add_argument("--strict-leakage", action="store_true", help="raise on any detected negative leakage")
+    audit.add_argument("--output", type=Path, help="optional path to write JSON audit report")
 
     evaluate = subparsers.add_parser("evaluate", help="evaluate ranking, localisation, and set-prediction JSON Lines")
     evaluate.add_argument("--ranking", type=Path)
@@ -210,7 +219,7 @@ def build_parser() -> argparse.ArgumentParser:
     evaluate.add_argument("--min-probabilities", type=str, default="none", help="comma-separated min_probability grid (use 'none')")
     evaluate.add_argument("--prob-margin", type=float, default=None, help="optional margin in calibrated probability space")
     evaluate.add_argument("--class-weight", choices=("none", "balanced"), default="none")
-    evaluate.add_argument("--normalization", choices=("zscore", "robust"), default="zscore")
+    evaluate.add_argument("--normalization", choices=("zscore", "robust"), default="robust")
     evaluate.add_argument("--iou-threshold", type=float, default=0.5)
     evaluate.add_argument("--no-strict-contract", action="store_true", help="collect localisation contract violations instead of raising")
     evaluate.add_argument("--output", type=Path, help="optional path to write JSON evaluation report")
@@ -283,6 +292,16 @@ def main(argv: Sequence[str] | None = None) -> None:
             BenchmarkPlan(records),
             lexicon=lexicon,
             strict_background_leakage=not args.no_strict_leakage,
+            token_mode=args.token_mode,
+        )
+        _emit(output, args.output)
+    elif args.command == "audit":
+        lexicon = load_lexicon(args.lexicon) if args.lexicon else None
+        output = audit_manifest(
+            args.manifest,
+            lexicon=lexicon,
+            token_mode=args.token_mode,
+            strict_leakage=args.strict_leakage,
         )
         _emit(output, args.output)
     else:

@@ -9,11 +9,13 @@ from .manifest import (
     LexiconEntry,
     POSITIONS,
     SynthesisRecord,
+    audit_manifest,
     build_benchmark_plan,
     find_substring_conflicts,
     load_background_phrases,
     load_confusion_pairs,
     load_lexicon,
+    phrase_occurs_in_text,
     validate_plan,
 )
 
@@ -28,10 +30,12 @@ __all__ = [
     "LexiconEntry",
     "POSITIONS",
     "SynthesisRecord",
+    "audit_manifest",
     "build_benchmark_plan",
     "find_substring_conflicts",
     "load_background_phrases",
     "load_confusion_pairs",
     "load_lexicon",
+    "phrase_occurs_in_text",
     "validate_plan",
 ]

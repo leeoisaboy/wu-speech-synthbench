@@ -110,6 +110,24 @@ def rms_energy_db(
     return 20.0 * np.log10(rms), hop
 
 
+SEGMENT_PRESETS: dict[str, dict[str, Any]] = {
+    "tts_clean": {
+        "relative_db": 18.0,
+        "noise_floor_percentile": 5.0,
+        "noise_floor_margin_db": 3.0,
+        "high_band_offset_db": -6.0,
+        "use_high_band": True,
+    },
+    "real_noisy": {
+        "relative_db": 12.0,
+        "noise_floor_percentile": 10.0,
+        "noise_floor_margin_db": 6.0,
+        "high_band_offset_db": -12.0,
+        "use_high_band": True,
+    },
+}
+
+
 def acoustic_features(
     signal: np.ndarray,
     sample_rate: int,
@@ -118,12 +136,14 @@ def acoustic_features(
     window_type: str = "hann",
     bandpass: tuple[float, float] | None = (300.0, 3400.0),
     high_band_hz: tuple[float, float] = (2000.0, 4000.0),
+    *,
+    high_band_offset_db: float = -6.0,
+    use_high_band: bool = True,
 ) -> dict[str, Any]:
     """Compute windowed speech-band energy, Parseval-consistent high-band energy, and spectral flux.
 
-    In v3, ``high_band_db`` obeys Parseval's theorem for real-signal one-sided FFTs so that
-    narrowband voiceless fricatives/aspirates are measured on the exact same physical dB
-    scale as time-domain ``energy_db`` regardless of sample rate or window length.
+    Dynamically clamps ``high_band_hz`` to ``[min(low, 0.65 * nyquist), min(high, 0.95 * nyquist)]``
+    so 8 kHz telephony through 48 kHz studio recordings are handled safely.
     """
     raw = np.asarray(signal, dtype=np.float64)
     if raw.ndim == 2:
@@ -140,18 +160,16 @@ def acoustic_features(
     raw_frames, _, _ = _frame_audio(raw, sample_rate, hop_seconds, window_seconds, window_type)
     mag = np.abs(np.fft.rfft(raw_frames, axis=1))
     freqs = np.fft.rfftfreq(n_fft, d=1.0 / sample_rate)
-    # One-sided rfft Parseval weights: 1 for DC and Nyquist (if n_fft even), 2 for interior bins
     parseval_w = np.full(len(freqs), 2.0, dtype=np.float64)
     parseval_w[0] = 1.0
     if n_fft % 2 == 0:
         parseval_w[-1] = 1.0
 
     nyquist = sample_rate / 2.0
-    hi_low = min(high_band_hz[0], nyquist * 0.7)
-    hi_high = min(high_band_hz[1], nyquist)
+    hi_low = min(float(high_band_hz[0]), nyquist * 0.65)
+    hi_high = min(float(high_band_hz[1]), nyquist * 0.95)
     hi_mask = (freqs >= hi_low) & (freqs <= hi_high)
-    if np.any(hi_mask):
-        # sum(|X_k|^2 * w_k) / (N * sum(win^2)) == time-domain windowed mean-square power in band
+    if hi_high > hi_low and np.any(hi_mask):
         hi_power = np.sum((mag[:, hi_mask] ** 2) * parseval_w[hi_mask][None, :], axis=1) / (n_fft * norm_factor)
         high_band_db = 10.0 * np.log10(hi_power + 1e-12)
     else:
@@ -162,7 +180,7 @@ def acoustic_features(
     diff = np.diff(mag_norm, axis=0, prepend=mag_norm[:1])
     spectral_flux = np.sum(np.maximum(diff, 0.0), axis=1)
 
-    fused_db = np.maximum(energy_db, high_band_db - 6.0)
+    fused_db = np.maximum(energy_db, high_band_db + float(high_band_offset_db)) if use_high_band else energy_db.copy()
     return {
         "energy_db": energy_db,
         "high_band_db": high_band_db,
@@ -171,6 +189,7 @@ def acoustic_features(
         "hop": hop,
         "window_seconds": window_dur,
         "duration": len(raw) / float(sample_rate),
+        "effective_high_band_hz": (hi_low, hi_high),
     }
 
 
@@ -193,16 +212,19 @@ def _refine_edge(
     hold_frames: int,
     local_peak_seconds: float,
     max_walk_seconds: float,
+    *,
+    noise_floor_percentile: float = 5.0,
+    noise_floor_margin_db: float = 3.0,
 ) -> tuple[int, float]:
-    """Refine outer boundary without silence overshoot or boundary anchor lock."""
+    """Refine outer boundary with adaptive quantile noise-floor guard."""
     n_frames = len(energy_db)
     anchor = _time_to_frame(anchor_time, hop, half_window, n_frames)
     peak_radius = max(1, int(round(local_peak_seconds / hop)))
     local_start = max(0, anchor - peak_radius)
     local_end = min(n_frames, anchor + peak_radius + 1)
     block = energy_db[local_start:local_end]
-    quiet = float(np.percentile(energy_db, 5))
-    threshold = max(float(block.max()) - relative_db, quiet + 3.0)
+    quiet = float(np.percentile(energy_db, noise_floor_percentile))
+    threshold = max(float(block.max()) - relative_db, quiet + noise_floor_margin_db)
 
     frame = anchor
     last_active = anchor
@@ -268,7 +290,7 @@ def segment_word(
     sample_rate: int,
     characters: str,
     anchor_times: Sequence[float],
-    relative_db: float = 18.0,
+    relative_db: float | None = None,
     hold_frames: int = 2,
     reach_seconds: float = 0.12,
     max_walk_seconds: float = 0.24,
@@ -281,15 +303,31 @@ def segment_word(
     posterior_hop_seconds: float | None = None,
     posterior_offset_seconds: float = 0.0,
     posterior_weight: float = 0.5,
+    *,
+    preset: str = "tts_clean",
+    noise_floor_percentile: float | None = None,
+    noise_floor_margin_db: float | None = None,
+    high_band_offset_db: float | None = None,
+    use_high_band: bool | None = None,
+    local_normalization: bool = True,
 ) -> WordSpan:
     """Expand char anchors outward and cut internal boundaries using local energy + flux (+ posteriors).
 
-    Improvements in v3:
-    - Normalizes energy and spectral flux locally inside the word span ``[left : right + 1]``
-      so utterance-edge digital silence (-120 dB) never dilutes in-word energy valleys.
-    - Uses Parseval-consistent high-band energy for voiceless fricatives/aspirates.
-    - Resamples external posteriors directly onto frame-center times (``frame * hop + half_window``).
+    Presets
+    -------
+    - ``"tts_clean"`` (default): high-sensitivity boundaries tuned for clean TTS & studio audio.
+    - ``"real_noisy"``: adaptive 10th-percentile noise floor (+6 dB margin), 12 dB relative drop,
+      and tightened high-band offset (-12 dB) to prevent background hiss from falsely expanding edges.
     """
+    if preset not in SEGMENT_PRESETS:
+        raise ValueError(f"unsupported preset: {preset!r}; choose from {tuple(SEGMENT_PRESETS)}")
+    cfg = SEGMENT_PRESETS[preset]
+    eff_rel_db = float(cfg["relative_db"] if relative_db is None else relative_db)
+    eff_nf_pct = float(cfg["noise_floor_percentile"] if noise_floor_percentile is None else noise_floor_percentile)
+    eff_nf_margin = float(cfg["noise_floor_margin_db"] if noise_floor_margin_db is None else noise_floor_margin_db)
+    eff_hb_offset = float(cfg["high_band_offset_db"] if high_band_offset_db is None else high_band_offset_db)
+    eff_use_hb = bool(cfg["use_high_band"] if use_high_band is None else use_high_band)
+
     if len(characters) != len(anchor_times):
         raise ValueError("characters and anchor_times must have equal length")
     if len(characters) < 1:
@@ -305,6 +343,8 @@ def segment_word(
         window_seconds=window_seconds,
         window_type=window_type,
         bandpass=bandpass,
+        high_band_offset_db=eff_hb_offset,
+        use_high_band=eff_use_hb,
     )
     energy_db = feats["fused_db"]
     flux = feats["spectral_flux"]
@@ -314,17 +354,41 @@ def segment_word(
     n_frames = len(energy_db)
 
     left, left_threshold = _refine_edge(
-        energy_db, hop, half_window, float(anchors[0]), "left", relative_db, hold_frames, reach_seconds, max_walk_seconds
+        energy_db,
+        hop,
+        half_window,
+        float(anchors[0]),
+        "left",
+        eff_rel_db,
+        hold_frames,
+        reach_seconds,
+        max_walk_seconds,
+        noise_floor_percentile=eff_nf_pct,
+        noise_floor_margin_db=eff_nf_margin,
     )
     right, right_threshold = _refine_edge(
-        energy_db, hop, half_window, float(anchors[-1]), "right", relative_db, hold_frames, reach_seconds, max_walk_seconds
+        energy_db,
+        hop,
+        half_window,
+        float(anchors[-1]),
+        "right",
+        eff_rel_db,
+        hold_frames,
+        reach_seconds,
+        max_walk_seconds,
+        noise_floor_percentile=eff_nf_pct,
+        noise_floor_margin_db=eff_nf_margin,
     )
     if right < left:
         right = left
 
-    # Local normalization inside the active word span [left : right + 1]
-    word_energy_norm = _local_minmax(energy_db[left : right + 1])
-    word_flux_norm = _local_minmax(flux[left : right + 1])
+    # Local normalization inside the active word span [left : right + 1] (or global for ablation)
+    if local_normalization:
+        word_energy_norm = _local_minmax(energy_db[left : right + 1])
+        word_flux_norm = _local_minmax(flux[left : right + 1])
+    else:
+        word_energy_norm = _local_minmax(energy_db)[left : right + 1]
+        word_flux_norm = _local_minmax(flux)[left : right + 1]
     word_valley_cost = word_energy_norm - flux_weight * word_flux_norm
 
     resampled_post: np.ndarray | None = None

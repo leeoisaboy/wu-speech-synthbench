@@ -1,4 +1,4 @@
-"""Synthetic dialect corpus planning and fine-grained retrieval evaluation (v2)."""
+"""Language-agnostic speech corpus auditing, adaptive signal timestamping, calibration, and anti-gaming evaluation (v4)."""
 
 from .adapters import (
     MockSynthesisAdapter,
@@ -6,10 +6,15 @@ from .adapters import (
     RetrievalResult,
     SynthesisAdapter,
     SynthesizedRecord,
+    from_asr_transcript,
+    from_audiollm_kws_record,
+    from_crossmodal_align_record,
+    from_disentangle_matches,
     load_synthesized_manifest,
     write_synthesized_manifest,
 )
 from .auto_timestamp import (
+    SEGMENT_PRESETS,
     CharSpan,
     DerivedPosition,
     PositionSource,
@@ -43,11 +48,13 @@ from .synth_pipeline import (
     ConfusionPair,
     LexiconEntry,
     SynthesisRecord,
+    audit_manifest,
     build_benchmark_plan,
     find_substring_conflicts,
     load_background_phrases,
     load_confusion_pairs,
     load_lexicon,
+    phrase_occurs_in_text,
     validate_plan,
 )
 from .synth_pipeline.demo import demo_lexicon, demo_plan
@@ -57,11 +64,13 @@ __all__ = [
     "ConfusionPair",
     "LexiconEntry",
     "SynthesisRecord",
+    "audit_manifest",
     "build_benchmark_plan",
     "find_substring_conflicts",
     "load_background_phrases",
     "load_confusion_pairs",
     "load_lexicon",
+    "phrase_occurs_in_text",
     "validate_plan",
     "demo_lexicon",
     "demo_plan",
@@ -70,8 +79,13 @@ __all__ = [
     "RetrievalResult",
     "SynthesisAdapter",
     "SynthesizedRecord",
+    "from_asr_transcript",
+    "from_audiollm_kws_record",
+    "from_crossmodal_align_record",
+    "from_disentangle_matches",
     "load_synthesized_manifest",
     "write_synthesized_manifest",
+    "SEGMENT_PRESETS",
     "CharSpan",
     "DerivedPosition",
     "PositionSource",

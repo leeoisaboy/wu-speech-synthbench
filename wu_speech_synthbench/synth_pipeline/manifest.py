@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import csv
 import json
+import re
+import unicodedata
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
@@ -555,13 +557,64 @@ def build_benchmark_plan(
     return BenchmarkPlan(records, target_count, hard_negative_count, background_count)
 
 
-def find_substring_conflicts(phrases: Sequence[str]) -> list[dict[str, str]]:
-    """Detect pairs of distinct lexicon phrases where one is a substring of another."""
+def _normalize_text(text: str) -> str:
+    return unicodedata.normalize("NFKC", str(text))
+
+
+def _is_latin_word_phrase(phrase: str) -> bool:
+    """Return True when a phrase consists of Latin/ASCII word tokens (no CJK ideographs)."""
+    norm = _normalize_text(phrase).strip()
+    if not norm:
+        return False
+    for ch in norm:
+        cp = ord(ch)
+        if (0x4E00 <= cp <= 0x9FFF) or (0x3400 <= cp <= 0x4DBF) or (0x3040 <= cp <= 0x30FF):
+            return False
+    return any(ch.isalnum() for ch in norm)
+
+
+def phrase_occurs_in_text(phrase: str, text: str, *, token_mode: str = "auto") -> bool:
+    """Language-aware occurrence check (CJK literal substring vs Latin/English word boundary).
+
+    Parameters
+    ----------
+    token_mode:
+        - ``"cjk"``: literal substring match (after NFKC normalization).
+        - ``"word"``: case-insensitive whole-word boundary match (``(?<!\\w)phrase(?!\\w)``)
+          so ``"in"`` never false-triggers inside ``"window"``.
+        - ``"auto"`` (default): uses ``"word"`` for Latin/alphanumeric phrases and ``"cjk"``
+          for CJK phrases.
+    """
+    p = _normalize_text(phrase).strip()
+    t = _normalize_text(text)
+    if not p or not t:
+        return False
+    mode = token_mode.lower()
+    if mode == "auto":
+        mode = "word" if _is_latin_word_phrase(p) else "cjk"
+    if mode == "cjk":
+        return p in t
+    if mode == "word":
+        pattern = r"(?<!\w)" + re.escape(p) + r"(?!\w)"
+        return re.search(pattern, t, flags=re.IGNORECASE) is not None
+    raise ValueError(f"unsupported token_mode: {token_mode!r}; choose 'auto', 'cjk', or 'word'")
+
+
+def find_substring_conflicts(
+    phrases: Sequence[str],
+    *,
+    token_mode: str = "auto",
+) -> list[dict[str, str]]:
+    """Detect pairs of distinct lexicon phrases where one is contained in another.
+
+    Respects ``token_mode`` so English phrases check whole-word containment (``"in"`` in
+    ``"in town"`` is a conflict; ``"in"`` in ``"window"`` is NOT a conflict).
+    """
     unique = sorted({p for p in phrases if p})
     conflicts: list[dict[str, str]] = []
     for i, shorter in enumerate(unique):
         for j, longer in enumerate(unique):
-            if i != j and shorter in longer:
+            if i != j and phrase_occurs_in_text(shorter, longer, token_mode=token_mode):
                 conflicts.append({"substring": shorter, "superstring": longer})
     return conflicts
 
@@ -571,11 +624,12 @@ def validate_plan(
     lexicon: Sequence[LexiconEntry] | None = None,
     strict_background_leakage: bool = True,
     strict_negative_leakage: bool | None = None,
+    *,
+    token_mode: str = "auto",
 ) -> dict[str, Any]:
     """Validate spans, subset isolation, full-lexicon negative leakage, and substring conflicts.
 
-    In v3, BOTH ``hard_negative`` and ``background`` subsets are audited against the
-    entire ``enrolled_phrases`` set so no registered hotword leaks into a negative utterance.
+    Supports ``token_mode="auto" | "cjk" | "word"`` for zero false positives on English word boundaries.
     """
     enforce_neg_leakage = strict_background_leakage if strict_negative_leakage is None else strict_negative_leakage
 
@@ -619,10 +673,10 @@ def validate_plan(
         elif row.subset == "hard_negative":
             if row.expected_targets:
                 raise ValueError(f"hard_negative must have empty expected_targets: {row.sample_id}")
-            if row.target_phrase and row.target_phrase in row.text:
+            if row.target_phrase and phrase_occurs_in_text(row.target_phrase, row.text, token_mode=token_mode):
                 raise ValueError(f"hard negative contains its target: {row.sample_id}")
             for phrase in sorted_enrolled:
-                if phrase in row.text:
+                if phrase_occurs_in_text(phrase, row.text, token_mode=token_mode):
                     hard_negative_leakages.append({"sample_id": row.sample_id, "leaked_phrase": phrase})
                     if enforce_neg_leakage:
                         raise ValueError(
@@ -635,7 +689,7 @@ def validate_plan(
             if row.expected_targets:
                 raise ValueError(f"background must have empty expected_targets: {row.sample_id}")
             for phrase in sorted_enrolled:
-                if phrase in row.text:
+                if phrase_occurs_in_text(phrase, row.text, token_mode=token_mode):
                     background_leakages.append({"sample_id": row.sample_id, "leaked_phrase": phrase})
                     if enforce_neg_leakage:
                         raise ValueError(
@@ -645,7 +699,7 @@ def validate_plan(
                         f"background sample {row.sample_id} contains enrolled phrase {phrase!r}"
                     )
 
-    substring_conflicts = find_substring_conflicts(sorted_enrolled)
+    substring_conflicts = find_substring_conflicts(sorted_enrolled, token_mode=token_mode)
     for conflict in substring_conflicts:
         warnings.append(
             f"lexicon substring conflict: {conflict['substring']!r} is contained in {conflict['superstring']!r}"
@@ -654,6 +708,7 @@ def validate_plan(
     return {
         "valid": True,
         "records": len(plan.records),
+        "token_mode": token_mode,
         "subset_counts": subset_counts,
         "position_counts": position_counts,
         "target_count_distribution": {str(k): v for k, v in sorted(target_count_distribution.items())},
@@ -661,4 +716,76 @@ def validate_plan(
         "hard_negative_leakages": hard_negative_leakages,
         "background_leakages": background_leakages,
         "warnings": warnings,
+    }
+
+
+def audit_manifest(
+    source: str | Path | Sequence[Mapping[str, Any]],
+    lexicon: Sequence[LexiconEntry | str] | None = None,
+    *,
+    token_mode: str = "auto",
+    strict_leakage: bool = False,
+) -> dict[str, Any]:
+    """One-call leakage & lexicon-conflict auditor for ANY real or synthetic KWS/ASR JSONL manifest.
+
+    Accepts standard ``SynthesisRecord`` JSONL, ``hf_dataset_release`` (``search_pos.jsonl`` /
+    ``search_neg.jsonl`` with ``gold`` and ``text``), or arbitrary dicts with ``text`` and
+    ``expected_targets`` / ``expected_phrases`` / ``gold``.
+    """
+    rows = _read_jsonl(Path(source)) if isinstance(source, (str, Path)) else [dict(r) for r in source]
+    enrolled: set[str] = set()
+    if lexicon is not None:
+        for entry in lexicon:
+            phrase = entry.phrase if isinstance(entry, LexiconEntry) else str(entry).strip()
+            if phrase:
+                enrolled.add(phrase)
+
+    parsed_rows: list[tuple[str, str, list[str]]] = []
+    for idx, row in enumerate(rows):
+        sid = str(row.get("sample_id") or row.get("utt") or row.get("clip_id") or f"row-{idx}")
+        text = str(row.get("text") or row.get("transcription") or "")
+        targets: list[str] = []
+        if row.get("expected_targets"):
+            targets = [str(x) for x in row["expected_targets"]]
+        elif row.get("expected_phrases"):
+            targets = [str(x) for x in row["expected_phrases"]]
+        elif row.get("gold"):
+            targets = [str(g["word"]) for g in row["gold"] if isinstance(g, Mapping) and g.get("word")]
+        elif row.get("word") and row.get("subset") not in ("hard_negative", "background", "negative"):
+            targets = [str(row["word"])]
+        if lexicon is None:
+            enrolled.update(targets)
+        parsed_rows.append((sid, text, targets))
+
+    sorted_enrolled = sorted(enrolled)
+    negative_leakages: list[dict[str, str]] = []
+    positive_missing_in_text: list[dict[str, str]] = []
+    n_pos = 0
+    n_neg = 0
+
+    for sid, text, targets in parsed_rows:
+        if targets:
+            n_pos += 1
+            for t in targets:
+                if text and not phrase_occurs_in_text(t, text, token_mode=token_mode):
+                    positive_missing_in_text.append({"sample_id": sid, "missing_target": t})
+        else:
+            n_neg += 1
+            for phrase in sorted_enrolled:
+                if phrase_occurs_in_text(phrase, text, token_mode=token_mode):
+                    negative_leakages.append({"sample_id": sid, "leaked_phrase": phrase})
+                    if strict_leakage:
+                        raise ValueError(f"negative sample {sid!r} leaks enrolled phrase {phrase!r}")
+
+    conflicts = find_substring_conflicts(sorted_enrolled, token_mode=token_mode)
+    return {
+        "valid": len(negative_leakages) == 0,
+        "records": len(parsed_rows),
+        "positive_records": n_pos,
+        "negative_records": n_neg,
+        "enrolled_count": len(sorted_enrolled),
+        "token_mode": token_mode,
+        "substring_conflicts": conflicts,
+        "negative_leakages": negative_leakages,
+        "positive_missing_in_text": positive_missing_in_text,
     }

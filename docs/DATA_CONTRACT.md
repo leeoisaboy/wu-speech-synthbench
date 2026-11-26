@@ -1,6 +1,6 @@
-# Data Contract (v3)
+# Data Contract (v4)
 
-All record types use JSON Lines with UTF-8 text.
+All record types use JSON Lines with UTF-8 text. In v4, `wu-speech-synthbench` serves as the unified evaluation & auditing schema across all four Quartet repositories (`disentangle-acoustic-print`, `audiollm-latent-kws`, `dialect-crossmodal-align`, and `wu-speech-synthbench`) as well as external Whisper / FunASR / MFA engines via `adapters.py` (`from_disentangle_matches`, `from_audiollm_kws_record`, `from_crossmodal_align_record`, `from_asr_transcript`) and `audit_manifest(..., token_mode="auto")`.
 
 ## Lexicon
 

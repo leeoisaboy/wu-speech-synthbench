@@ -1,0 +1,707 @@
+{
+  "version": "4.0.0",
+  "step1_step2_timestamps": {
+    "real_tts_track": {
+      "provider": "facebook/mms-tts-eng",
+      "sample_rate": 16000,
+      "n_utterances": 18,
+      "clean_mae_ms": 55.69,
+      "clean_hit_20ms": 0.0556,
+      "clean_hit_50ms": 0.3333,
+      "clean_iou": 0.7841,
+      "noisy_10db_mae_ms": 88.47,
+      "noisy_10db_hit_50ms": 0.2222
+    },
+    "real_recording_track": {
+      "L1": {
+        "clean": {
+          "tts_clean_local": {
+            "mae_ms": 113.82,
+            "hit_20ms": 0.0,
+            "hit_50ms": 0.05,
+            "iou": 0.4783,
+            "fricative_mae_ms": 121.67
+          },
+          "tts_clean_global": {
+            "mae_ms": 113.82,
+            "hit_20ms": 0.0,
+            "hit_50ms": 0.05,
+            "iou": 0.4783,
+            "fricative_mae_ms": 121.67
+          },
+          "no_high_band": {
+            "mae_ms": 113.82,
+            "hit_20ms": 0.0,
+            "hit_50ms": 0.05,
+            "iou": 0.4783,
+            "fricative_mae_ms": 121.67
+          },
+          "real_noisy": {
+            "mae_ms": 80.29,
+            "hit_20ms": 0.025,
+            "hit_50ms": 0.175,
+            "iou": 0.525,
+            "fricative_mae_ms": 65.09
+          },
+          "real_noisy_plus_wavlm_posterior": {
+            "mae_ms": 51.35,
+            "hit_20ms": 0.075,
+            "hit_50ms": 0.5625,
+            "iou": 0.6107,
+            "fricative_mae_ms": null
+          }
+        },
+        "snr_20db": {
+          "tts_clean_local": {
+            "mae_ms": 113.76,
+            "hit_20ms": 0.0,
+            "hit_50ms": 0.05,
+            "iou": 0.4748,
+            "fricative_mae_ms": 115.47
+          },
+          "tts_clean_global": {
+            "mae_ms": 113.76,
+            "hit_20ms": 0.0,
+            "hit_50ms": 0.05,
+            "iou": 0.4748,
+            "fricative_mae_ms": 115.47
+          },
+          "no_high_band": {
+            "mae_ms": 113.76,
+            "hit_20ms": 0.0,
+            "hit_50ms": 0.05,
+            "iou": 0.4748,
+            "fricative_mae_ms": 115.47
+          },
+          "real_noisy": {
+            "mae_ms": 78.26,
+            "hit_20ms": 0.025,
+            "hit_50ms": 0.1875,
+            "iou": 0.5317,
+            "fricative_mae_ms": 67.8
+          },
+          "real_noisy_plus_wavlm_posterior": {
+            "mae_ms": 51.38,
+            "hit_20ms": 0.0875,
+            "hit_50ms": 0.5625,
+            "iou": 0.6098,
+            "fricative_mae_ms": null
+          }
+        },
+        "snr_10db": {
+          "tts_clean_local": {
+            "mae_ms": 99.56,
+            "hit_20ms": 0.0,
+            "hit_50ms": 0.0875,
+            "iou": 0.4931,
+            "fricative_mae_ms": 90.97
+          },
+          "tts_clean_global": {
+            "mae_ms": 99.56,
+            "hit_20ms": 0.0,
+            "hit_50ms": 0.0875,
+            "iou": 0.4931,
+            "fricative_mae_ms": 90.97
+          },
+          "no_high_band": {
+            "mae_ms": 99.56,
+            "hit_20ms": 0.0,
+            "hit_50ms": 0.0875,
+            "iou": 0.4931,
+            "fricative_mae_ms": 90.97
+          },
+          "real_noisy": {
+            "mae_ms": 71.85,
+            "hit_20ms": 0.025,
+            "hit_50ms": 0.2,
+            "iou": 0.5165,
+            "fricative_mae_ms": 58.96
+          },
+          "real_noisy_plus_wavlm_posterior": {
+            "mae_ms": 57.15,
+            "hit_20ms": 0.0625,
+            "hit_50ms": 0.4375,
+            "iou": 0.5519,
+            "fricative_mae_ms": null
+          }
+        },
+        "snr_5db": {
+          "tts_clean_local": {
+            "mae_ms": 80.16,
+            "hit_20ms": 0.0125,
+            "hit_50ms": 0.1625,
+            "iou": 0.5085,
+            "fricative_mae_ms": 66.3
+          },
+          "tts_clean_global": {
+            "mae_ms": 80.16,
+            "hit_20ms": 0.0125,
+            "hit_50ms": 0.1625,
+            "iou": 0.5085,
+            "fricative_mae_ms": 66.3
+          },
+          "no_high_band": {
+            "mae_ms": 80.16,
+            "hit_20ms": 0.0125,
+            "hit_50ms": 0.1625,
+            "iou": 0.5085,
+            "fricative_mae_ms": 66.3
+          },
+          "real_noisy": {
+            "mae_ms": 66.9,
+            "hit_20ms": 0.0375,
+            "hit_50ms": 0.225,
+            "iou": 0.504,
+            "fricative_mae_ms": 59.81
+          },
+          "real_noisy_plus_wavlm_posterior": {
+            "mae_ms": 62.26,
+            "hit_20ms": 0.0375,
+            "hit_50ms": 0.325,
+            "iou": 0.4985,
+            "fricative_mae_ms": null
+          }
+        }
+      },
+      "L2": {
+        "clean": {
+          "tts_clean_local": {
+            "mae_ms": 114.35,
+            "hit_20ms": 0.0,
+            "hit_50ms": 0.125,
+            "iou": 0.4944,
+            "fricative_mae_ms": 118.01
+          },
+          "tts_clean_global": {
+            "mae_ms": 114.35,
+            "hit_20ms": 0.0,
+            "hit_50ms": 0.125,
+            "iou": 0.4944,
+            "fricative_mae_ms": 118.01
+          },
+          "no_high_band": {
+            "mae_ms": 114.35,
+            "hit_20ms": 0.0,
+            "hit_50ms": 0.125,
+            "iou": 0.4944,
+            "fricative_mae_ms": 118.01
+          },
+          "real_noisy": {
+            "mae_ms": 74.06,
+            "hit_20ms": 0.05,
+            "hit_50ms": 0.3625,
+            "iou": 0.5891,
+            "fricative_mae_ms": 46.46
+          },
+          "real_noisy_plus_wavlm_posterior": {
+            "mae_ms": 45.58,
+            "hit_20ms": 0.05,
+            "hit_50ms": 0.6125,
+            "iou": 0.6671,
+            "fricative_mae_ms": null
+          }
+        },
+        "snr_20db": {
+          "tts_clean_local": {
+            "mae_ms": 117.22,
+            "hit_20ms": 0.0,
+            "hit_50ms": 0.0875,
+            "iou": 0.4876,
+            "fricative_mae_ms": 118.01
+          },
+          "tts_clean_global": {
+            "mae_ms": 117.22,
+            "hit_20ms": 0.0,
+            "hit_50ms": 0.0875,
+            "iou": 0.4876,
+            "fricative_mae_ms": 118.01
+          },
+          "no_high_band": {
+            "mae_ms": 117.22,
+            "hit_20ms": 0.0,
+            "hit_50ms": 0.0875,
+            "iou": 0.4876,
+            "fricative_mae_ms": 118.01
+          },
+          "real_noisy": {
+            "mae_ms": 74.35,
+            "hit_20ms": 0.05,
+            "hit_50ms": 0.3625,
+            "iou": 0.5882,
+            "fricative_mae_ms": 46.46
+          },
+          "real_noisy_plus_wavlm_posterior": {
+            "mae_ms": 46.01,
+            "hit_20ms": 0.05,
+            "hit_50ms": 0.6,
+            "iou": 0.6656,
+            "fricative_mae_ms": null
+          }
+        },
+        "snr_10db": {
+          "tts_clean_local": {
+            "mae_ms": 105.0,
+            "hit_20ms": 0.0125,
+            "hit_50ms": 0.2,
+            "iou": 0.5182,
+            "fricative_mae_ms": 83.33
+          },
+          "tts_clean_global": {
+            "mae_ms": 105.0,
+            "hit_20ms": 0.0125,
+            "hit_50ms": 0.2,
+            "iou": 0.5182,
+            "fricative_mae_ms": 83.33
+          },
+          "no_high_band": {
+            "mae_ms": 105.0,
+            "hit_20ms": 0.0125,
+            "hit_50ms": 0.2,
+            "iou": 0.5182,
+            "fricative_mae_ms": 83.33
+          },
+          "real_noisy": {
+            "mae_ms": 71.61,
+            "hit_20ms": 0.05,
+            "hit_50ms": 0.3375,
+            "iou": 0.5907,
+            "fricative_mae_ms": 48.12
+          },
+          "real_noisy_plus_wavlm_posterior": {
+            "mae_ms": 47.34,
+            "hit_20ms": 0.0375,
+            "hit_50ms": 0.575,
+            "iou": 0.6547,
+            "fricative_mae_ms": null
+          }
+        },
+        "snr_5db": {
+          "tts_clean_local": {
+            "mae_ms": 81.22,
+            "hit_20ms": 0.05,
+            "hit_50ms": 0.2875,
+            "iou": 0.5639,
+            "fricative_mae_ms": 65.62
+          },
+          "tts_clean_global": {
+            "mae_ms": 81.22,
+            "hit_20ms": 0.05,
+            "hit_50ms": 0.2875,
+            "iou": 0.5639,
+            "fricative_mae_ms": 65.62
+          },
+          "no_high_band": {
+            "mae_ms": 81.22,
+            "hit_20ms": 0.05,
+            "hit_50ms": 0.2875,
+            "iou": 0.5639,
+            "fricative_mae_ms": 65.62
+          },
+          "real_noisy": {
+            "mae_ms": 65.7,
+            "hit_20ms": 0.0375,
+            "hit_50ms": 0.3875,
+            "iou": 0.5745,
+            "fricative_mae_ms": 41.22
+          },
+          "real_noisy_plus_wavlm_posterior": {
+            "mae_ms": 48.68,
+            "hit_20ms": 0.075,
+            "hit_50ms": 0.6125,
+            "iou": 0.6278,
+            "fricative_mae_ms": null
+          }
+        }
+      },
+      "L3": {
+        "clean": {
+          "tts_clean_local": {
+            "mae_ms": 113.97,
+            "hit_20ms": 0.0625,
+            "hit_50ms": 0.2,
+            "iou": 0.6216,
+            "fricative_mae_ms": 112.04
+          },
+          "tts_clean_global": {
+            "mae_ms": 113.97,
+            "hit_20ms": 0.0625,
+            "hit_50ms": 0.2,
+            "iou": 0.6216,
+            "fricative_mae_ms": 112.04
+          },
+          "no_high_band": {
+            "mae_ms": 114.59,
+            "hit_20ms": 0.0625,
+            "hit_50ms": 0.2,
+            "iou": 0.6195,
+            "fricative_mae_ms": 113.06
+          },
+          "real_noisy": {
+            "mae_ms": 137.25,
+            "hit_20ms": 0.0125,
+            "hit_50ms": 0.075,
+            "iou": 0.5418,
+            "fricative_mae_ms": 133.98
+          },
+          "real_noisy_plus_wavlm_posterior": {
+            "mae_ms": 179.94,
+            "hit_20ms": 0.0,
+            "hit_50ms": 0.0,
+            "iou": 0.3981,
+            "fricative_mae_ms": null
+          }
+        },
+        "snr_20db": {
+          "tts_clean_local": {
+            "mae_ms": 111.41,
+            "hit_20ms": 0.0625,
+            "hit_50ms": 0.2125,
+            "iou": 0.6302,
+            "fricative_mae_ms": 110.61
+          },
+          "tts_clean_global": {
+            "mae_ms": 111.41,
+            "hit_20ms": 0.0625,
+            "hit_50ms": 0.2125,
+            "iou": 0.6302,
+            "fricative_mae_ms": 110.61
+          },
+          "no_high_band": {
+            "mae_ms": 111.97,
+            "hit_20ms": 0.0625,
+            "hit_50ms": 0.2125,
+            "iou": 0.6283,
+            "fricative_mae_ms": 111.53
+          },
+          "real_noisy": {
+            "mae_ms": 137.75,
+            "hit_20ms": 0.0125,
+            "hit_50ms": 0.075,
+            "iou": 0.5406,
+            "fricative_mae_ms": 134.8
+          },
+          "real_noisy_plus_wavlm_posterior": {
+            "mae_ms": 180.19,
+            "hit_20ms": 0.0,
+            "hit_50ms": 0.0,
+            "iou": 0.3974,
+            "fricative_mae_ms": null
+          }
+        },
+        "snr_10db": {
+          "tts_clean_local": {
+            "mae_ms": 118.19,
+            "hit_20ms": 0.0375,
+            "hit_50ms": 0.175,
+            "iou": 0.6077,
+            "fricative_mae_ms": 116.94
+          },
+          "tts_clean_global": {
+            "mae_ms": 118.19,
+            "hit_20ms": 0.0375,
+            "hit_50ms": 0.175,
+            "iou": 0.6077,
+            "fricative_mae_ms": 116.94
+          },
+          "no_high_band": {
+            "mae_ms": 118.19,
+            "hit_20ms": 0.0375,
+            "hit_50ms": 0.175,
+            "iou": 0.6077,
+            "fricative_mae_ms": 116.94
+          },
+          "real_noisy": {
+            "mae_ms": 142.0,
+            "hit_20ms": 0.025,
+            "hit_50ms": 0.0625,
+            "iou": 0.5277,
+            "fricative_mae_ms": 138.88
+          },
+          "real_noisy_plus_wavlm_posterior": {
+            "mae_ms": 182.37,
+            "hit_20ms": 0.0,
+            "hit_50ms": 0.0,
+            "iou": 0.3908,
+            "fricative_mae_ms": null
+          }
+        },
+        "snr_5db": {
+          "tts_clean_local": {
+            "mae_ms": 135.63,
+            "hit_20ms": 0.025,
+            "hit_50ms": 0.0875,
+            "iou": 0.5499,
+            "fricative_mae_ms": 132.14
+          },
+          "tts_clean_global": {
+            "mae_ms": 135.63,
+            "hit_20ms": 0.025,
+            "hit_50ms": 0.0875,
+            "iou": 0.5499,
+            "fricative_mae_ms": 132.14
+          },
+          "no_high_band": {
+            "mae_ms": 135.69,
+            "hit_20ms": 0.025,
+            "hit_50ms": 0.0875,
+            "iou": 0.5497,
+            "fricative_mae_ms": 132.14
+          },
+          "real_noisy": {
+            "mae_ms": 155.0,
+            "hit_20ms": 0.0,
+            "hit_50ms": 0.0,
+            "iou": 0.4826,
+            "fricative_mae_ms": 151.53
+          },
+          "real_noisy_plus_wavlm_posterior": {
+            "mae_ms": 188.97,
+            "hit_20ms": 0.0,
+            "hit_50ms": 0.0,
+            "iou": 0.3679,
+            "fricative_mae_ms": null
+          }
+        }
+      }
+    },
+    "elapsed_sec": 131.4
+  },
+  "step3_calibration_and_robust_mad": {
+    "L1": {
+      "in_domain_calibration": {
+        "balanced_uncorrected": {
+          "ece": 0.1751,
+          "brier": 0.0824,
+          "mean_prob": 0.2001,
+          "true_prevalence": 0.025
+        },
+        "balanced_prior_corrected": {
+          "ece": 0.0048,
+          "brier": 0.0147,
+          "mean_prob": 0.0209,
+          "true_prevalence": 0.025
+        },
+        "unweighted": {
+          "ece": 0.0042,
+          "brier": 0.0145,
+          "mean_prob": 0.0211,
+          "true_prevalence": 0.025
+        },
+        "ece_reduction_pct": 97.26
+      },
+      "ood_noisy_10db_calibration": {
+        "balanced_uncorrected": {
+          "ece": 0.3206,
+          "brier": 0.1797,
+          "mean_prob": 0.3456,
+          "true_prevalence": 0.025
+        },
+        "balanced_prior_corrected": {
+          "ece": 0.0169,
+          "brier": 0.0259,
+          "mean_prob": 0.0271,
+          "true_prevalence": 0.025
+        }
+      },
+      "multi_target_outlier_decoding": {
+        "n_utterances": 46,
+        "robust_best_f1": 0.5745,
+        "zscore_best_f1": 0.0,
+        "f1_gain_robust_over_zscore": 0.5745,
+        "continue_vs_break_recovered_targets": 0
+      }
+    },
+    "L2": {
+      "in_domain_calibration": {
+        "balanced_uncorrected": {
+          "ece": 0.1399,
+          "brier": 0.0772,
+          "mean_prob": 0.1649,
+          "true_prevalence": 0.025
+        },
+        "balanced_prior_corrected": {
+          "ece": 0.0041,
+          "brier": 0.0153,
+          "mean_prob": 0.0218,
+          "true_prevalence": 0.025
+        },
+        "unweighted": {
+          "ece": 0.0031,
+          "brier": 0.0151,
+          "mean_prob": 0.023,
+          "true_prevalence": 0.025
+        },
+        "ece_reduction_pct": 97.07
+      },
+      "ood_noisy_10db_calibration": {
+        "balanced_uncorrected": {
+          "ece": 0.1851,
+          "brier": 0.1266,
+          "mean_prob": 0.2101,
+          "true_prevalence": 0.025
+        },
+        "balanced_prior_corrected": {
+          "ece": 0.0283,
+          "brier": 0.0269,
+          "mean_prob": 0.0215,
+          "true_prevalence": 0.025
+        }
+      },
+      "multi_target_outlier_decoding": {
+        "n_utterances": 40,
+        "robust_best_f1": 0.5591,
+        "zscore_best_f1": 0.0,
+        "f1_gain_robust_over_zscore": 0.5591,
+        "continue_vs_break_recovered_targets": 0
+      }
+    },
+    "L3": {
+      "in_domain_calibration": {
+        "balanced_uncorrected": {
+          "ece": 0.0086,
+          "brier": 0.0073,
+          "mean_prob": 0.0336,
+          "true_prevalence": 0.025
+        },
+        "balanced_prior_corrected": {
+          "ece": 0.0031,
+          "brier": 0.0044,
+          "mean_prob": 0.0236,
+          "true_prevalence": 0.025
+        },
+        "unweighted": {
+          "ece": 0.0021,
+          "brier": 0.0044,
+          "mean_prob": 0.0242,
+          "true_prevalence": 0.025
+        },
+        "ece_reduction_pct": 63.95
+      },
+      "ood_noisy_10db_calibration": {
+        "balanced_uncorrected": {
+          "ece": 0.0296,
+          "brier": 0.0233,
+          "mean_prob": 0.0546,
+          "true_prevalence": 0.025
+        },
+        "balanced_prior_corrected": {
+          "ece": 0.0111,
+          "brier": 0.0125,
+          "mean_prob": 0.0139,
+          "true_prevalence": 0.025
+        }
+      },
+      "multi_target_outlier_decoding": {
+        "n_utterances": 42,
+        "robust_best_f1": 0.8862,
+        "zscore_best_f1": 0.0,
+        "f1_gain_robust_over_zscore": 0.8862,
+        "continue_vs_break_recovered_targets": 0
+      }
+    },
+    "elapsed_sec": 1.2
+  },
+  "step4_multi_engine_and_freq_bias": {
+    "L1": {
+      "whisper_tiny_asr": {
+        "micro_top2": 0.0186,
+        "strict_sentence_recall_complete": 0.01,
+        "loose_sentence_recall_inflated_by_neg": 0.34,
+        "false_alarm_rate": 0.08,
+        "precision_at_iou_strict_incl_nopos": 0.0,
+        "total_predicted_spans": 14,
+        "positionable_predicted_spans": 0,
+        "frequency_bias": {
+          "pearson_rho_raw_frequency": 0.0066,
+          "pearson_rho_log_frequency": 0.041,
+          "spearman_rho_raw_frequency": 0.0859,
+          "spearman_rho_log_frequency": 0.0859,
+          "word_count": 38.0
+        }
+      },
+      "acoustic_retrieval": {
+        "micro_top2": 0.4286,
+        "strict_sentence_recall_complete": 0.44,
+        "precision_at_iou_strict": 0.33,
+        "recall_at_iou": 0.4099,
+        "frequency_bias": {
+          "pearson_rho_raw_frequency": 0.1651,
+          "pearson_rho_log_frequency": 0.1312,
+          "spearman_rho_raw_frequency": 0.1765,
+          "spearman_rho_log_frequency": 0.1765,
+          "word_count": 38.0
+        }
+      }
+    },
+    "L2": {
+      "whisper_tiny_asr": {
+        "micro_top2": 0.374,
+        "strict_sentence_recall_complete": 0.38,
+        "loose_sentence_recall_inflated_by_neg": 0.5867,
+        "false_alarm_rate": 0.02,
+        "precision_at_iou_strict_incl_nopos": 0.0,
+        "total_predicted_spans": 53,
+        "positionable_predicted_spans": 0,
+        "frequency_bias": {
+          "pearson_rho_raw_frequency": 0.1779,
+          "pearson_rho_log_frequency": 0.1603,
+          "spearman_rho_raw_frequency": 0.1974,
+          "spearman_rho_log_frequency": 0.1974,
+          "word_count": 39.0
+        }
+      },
+      "acoustic_retrieval": {
+        "micro_top2": 0.6179,
+        "strict_sentence_recall_complete": 0.62,
+        "precision_at_iou_strict": 0.375,
+        "recall_at_iou": 0.6098,
+        "frequency_bias": {
+          "pearson_rho_raw_frequency": 0.2957,
+          "pearson_rho_log_frequency": 0.3134,
+          "spearman_rho_raw_frequency": 0.242,
+          "spearman_rho_log_frequency": 0.242,
+          "word_count": 39.0
+        }
+      }
+    },
+    "elapsed_sec": 17.5
+  },
+  "step5_manifest_audit": {
+    "public_corpora": {
+      "L1": {
+        "records": 360,
+        "enrolled_words": 40,
+        "substring_conflicts_found": 0,
+        "substring_conflict_examples": [],
+        "negative_leakages_found": 0,
+        "negative_leakage_examples": []
+      },
+      "L2": {
+        "records": 360,
+        "enrolled_words": 40,
+        "substring_conflicts_found": 0,
+        "substring_conflict_examples": [],
+        "negative_leakages_found": 0,
+        "negative_leakage_examples": []
+      },
+      "L3": {
+        "records": 360,
+        "enrolled_words": 40,
+        "substring_conflicts_found": 0,
+        "substring_conflict_examples": [],
+        "negative_leakages_found": 0,
+        "negative_leakage_examples": []
+      }
+    },
+    "injected_stress_test": {
+      "total_injected_true_leaks": 20,
+      "detected_true_leaks": 20,
+      "leak_detection_rate": 1.0,
+      "english_word_boundary_traps": 10,
+      "false_positives_token_mode_auto": 0,
+      "false_positive_rate_auto": 0.0,
+      "false_positives_naive_substring": 10
+    }
+  },
+  "total_elapsed_sec": 150.2
+}

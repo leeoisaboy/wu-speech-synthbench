@@ -204,3 +204,156 @@ def load_synthesized_manifest(path: str | Path) -> list[SynthesizedRecord]:
     source = Path(path)
     with source.open(encoding="utf-8") as handle:
         return [SynthesizedRecord.from_dict(json.loads(line)) for line in handle if line.strip()]
+
+
+# ---------------------------------------------------------------------------
+# Quartet & External Engine Schema Adapters (v4.0)
+# ---------------------------------------------------------------------------
+
+def from_disentangle_matches(
+    sample_id: str,
+    matches: Sequence[Mapping[str, Any]],
+    *,
+    expected_targets: Sequence[str] = (),
+    frame_rate_hz: float = 50.0,
+    subset: str | None = None,
+) -> RetrievalResult:
+    """Convert ``disentangle-acoustic-print`` match dicts into a standard ``RetrievalResult``."""
+    score_by_key: dict[str, float] = {}
+    pred_spans: list[dict[str, Any]] = []
+    for item in matches:
+        key = str(item.get("key") or item.get("phrase") or "")
+        sc = float(item.get("score", 0.0))
+        if not key:
+            continue
+        if key not in score_by_key or sc > score_by_key[key]:
+            score_by_key[key] = sc
+        start = item.get("start")
+        end = item.get("end")
+        if start is not None and end is not None:
+            pred_spans.append(
+                {
+                    "phrase": key,
+                    "start": float(start) / max(frame_rate_hz, 1.0),
+                    "end": float(end) / max(frame_rate_hz, 1.0),
+                    "char_source": "disentangle-acoustic-print",
+                }
+            )
+    ordered = sorted(score_by_key.items(), key=lambda kv: -kv[1])
+    return RetrievalResult(
+        sample_id=str(sample_id),
+        expected_targets=list(expected_targets),
+        predicted_phrases=[k for k, _ in ordered],
+        scores=[{"phrase": k, "score": s} for k, s in ordered],
+        predicted_spans=pred_spans,
+        subset=subset or ("positive" if expected_targets else "negative"),
+    )
+
+
+def from_audiollm_kws_record(row: Mapping[str, Any]) -> RetrievalResult:
+    """Convert an ``audiollm-latent-kws`` detection record into a standard ``RetrievalResult``."""
+    sid = str(row.get("sample_id") or row.get("utt") or "")
+    expected = [
+        str(g["word"]) for g in (row.get("gold") or []) if isinstance(g, Mapping) and g.get("word")
+    ] or list(row.get("expected_targets") or row.get("expected_phrases") or [])
+    dets = list(row.get("detections") or row.get("predictions") or [])
+    score_by_key: dict[str, float] = {}
+    pred_spans: list[dict[str, Any]] = []
+    for det in dets:
+        key = str(det.get("word") or det.get("phrase") or det.get("key") or "")
+        sc = float(det.get("score", 0.0))
+        if not key:
+            continue
+        if key not in score_by_key or sc > score_by_key[key]:
+            score_by_key[key] = sc
+        t0 = det.get("t0", det.get("start"))
+        t1 = det.get("t1", det.get("end"))
+        pred_spans.append(
+            {
+                "phrase": key,
+                "start": None if t0 is None else float(t0),
+                "end": None if t1 is None else float(t1),
+                "char_source": "no-position" if (t0 is None or t1 is None) else "audiollm-latent-kws",
+            }
+        )
+    ordered = sorted(score_by_key.items(), key=lambda kv: -kv[1])
+    return RetrievalResult(
+        sample_id=sid,
+        expected_targets=expected,
+        predicted_phrases=[k for k, _ in ordered],
+        scores=[{"phrase": k, "score": s} for k, s in ordered],
+        predicted_spans=pred_spans,
+        subset=str(row.get("subset") or ("positive" if expected else "negative")),
+    )
+
+
+def from_crossmodal_align_record(row: Mapping[str, Any]) -> RetrievalResult:
+    """Convert a ``dialect-crossmodal-align`` calibrated score record into a ``RetrievalResult``."""
+    sid = str(row.get("sample_id") or row.get("clip_id") or "")
+    expected = list(row.get("expected_targets") or ([row["word"]] if row.get("word") else []))
+    raw_scores = row.get("scores") or {}
+    if isinstance(raw_scores, Mapping):
+        items = [(str(k), float(v)) for k, v in raw_scores.items()]
+    else:
+        items = [(str(x["phrase"]), float(x["score"])) for x in raw_scores]
+    items.sort(key=lambda kv: -kv[1])
+    return RetrievalResult(
+        sample_id=sid,
+        expected_targets=expected,
+        predicted_phrases=[k for k, _ in items],
+        scores=[{"phrase": k, "score": s} for k, s in items],
+        predicted_spans=[],
+        subset=str(row.get("subset") or ("positive" if expected else "negative")),
+    )
+
+
+def from_asr_transcript(
+    sample_id: str,
+    transcript: str,
+    lexicon_phrases: Sequence[str],
+    *,
+    expected_targets: Sequence[str] = (),
+    word_timestamps: Sequence[Mapping[str, Any]] | None = None,
+    token_mode: str = "auto",
+    subset: str | None = None,
+) -> RetrievalResult:
+    """Convert Whisper / FunASR / MFA transcript (+ optional word timestamps) into ``RetrievalResult``."""
+    from .synth_pipeline.manifest import phrase_occurs_in_text
+
+    matched: list[str] = []
+    pred_spans: list[dict[str, Any]] = []
+    ts_list = list(word_timestamps or [])
+
+    for phrase in lexicon_phrases:
+        if phrase_occurs_in_text(phrase, transcript, token_mode=token_mode):
+            matched.append(phrase)
+            span_found = False
+            for w in ts_list:
+                tok = str(w.get("word") or w.get("text") or "")
+                if tok and phrase_occurs_in_text(phrase, tok, token_mode=token_mode):
+                    t0 = w.get("start", w.get("t0"))
+                    t1 = w.get("end", w.get("t1"))
+                    if t0 is not None and t1 is not None:
+                        pred_spans.append(
+                            {
+                                "phrase": phrase,
+                                "start": float(t0),
+                                "end": float(t1),
+                                "char_source": "asr-timestamp",
+                            }
+                        )
+                        span_found = True
+                        break
+            if not span_found:
+                pred_spans.append(
+                    {"phrase": phrase, "start": None, "end": None, "char_source": "no-position"}
+                )
+
+    return RetrievalResult(
+        sample_id=str(sample_id),
+        expected_targets=list(expected_targets),
+        predicted_phrases=matched,
+        scores=[{"phrase": p, "score": 1.0 if p in matched else 0.0} for p in lexicon_phrases],
+        predicted_spans=pred_spans,
+        subset=subset or ("positive" if expected_targets else "negative"),
+    )
